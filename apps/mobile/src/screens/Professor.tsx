@@ -1,9 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Alert, ScrollView, View, useWindowDimensions } from "react-native";
 import type { Activity, AlertRow, Api, AttemptRow, AttendanceRow, ClassItem, SessionInfo } from "../api";
 import { ALERT_LABEL } from "../labels";
-import { Avatar, Button, Chip, Empty, Field, Hero, IconButton, Row, SectionTitle, Segmented, SlantBar, T, colors, firstName, mmss, presentLine, useInterval } from "../ui";
+import { Poster } from "../poster";
+import { Button, Chip, Empty, Field, Hero, IconButton, Panel, SectionTitle, Segmented, SlantBar, StudentTile, T, colors, firstName, mmss, presentLine, useInterval } from "../ui";
 import { EvidenceBoard } from "./Evidencias";
 
 export function Professor({ api, userName }: { api: Api; userName: string }) {
@@ -22,6 +22,8 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
   const [windowMin, setWindowMin] = useState<"2" | "5" | "10">("2");
   const [pollPrompt, setPollPrompt] = useState("");
   const [pollOpts, setPollOpts] = useState("Sim, Não");
+  const { width } = useWindowDimensions();
+  const tileW = Math.floor((width - 40 - 20) / 3); // 3 colunas, 20 px de margem de cada lado, 10 px entre peças
 
   const fail = (e: unknown) => Alert.alert("Não deu certo", e instanceof Error ? e.message : String(e));
 
@@ -89,36 +91,24 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
         <Hero>
           <T v="small" c={colors.sobreAzul}>
-            Professor
-          </T>
-          <T v="title" c={colors.branco}>
             Olá, {firstName(userName)}
+          </T>
+          <T v="title" c={colors.branco} slant>
+            Suas turmas
           </T>
         </Hero>
         <View style={{ paddingHorizontal: 20, gap: 4 }}>
-          <SectionTitle>Minhas turmas</SectionTitle>
           {classes.length === 0 && <Empty title="Nenhuma turma ainda" text="Crie a primeira abaixo e passe o código para os alunos." />}
-          {classes.map((k, i) => (
-            <Pressable key={k.id} accessibilityRole="button" accessibilityLabel={`Abrir turma ${k.name}`} onPress={() => setCls(k)}>
-              <Row last={i === classes.length - 1}>
-                <Avatar name={k.name} />
-                <View style={{ flex: 1 }}>
-                  <T v="body" style={{ fontFamily: "Outfit_600SemiBold" }}>
-                    {k.name}
-                  </T>
-                  <T v="small" c={colors.mudo}>
-                    Código {k.joinCode}
-                  </T>
-                </View>
-                <Ionicons name="chevron-forward" size={22} color={colors.mudo} />
-              </Row>
-            </Pressable>
+          {classes.map((k) => (
+            <Poster key={k.id} name={k.name} sub={`Código ${k.joinCode}`} onPress={() => setCls(k)} />
           ))}
 
-          <View style={{ paddingTop: 24, gap: 12 }}>
-            <SectionTitle>Nova turma</SectionTitle>
-            <Field placeholder="Nome da turma" value={newName} onChangeText={setNewName} onSubmitEditing={createClass} returnKeyType="done" />
-            <Button title="Criar turma" icon="add" onPress={createClass} disabled={newName.trim().length < 2} />
+          <View style={{ paddingTop: 24 }}>
+            <Panel>
+              <SectionTitle>Nova turma</SectionTitle>
+              <Field placeholder="Nome da turma" value={newName} onChangeText={setNewName} onSubmitEditing={createClass} returnKeyType="done" />
+              <Button title="Criar turma" icon="add" onPress={createClass} disabled={newName.trim().length < 2} />
+            </Panel>
           </View>
         </View>
       </ScrollView>
@@ -152,14 +142,19 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
             <T v="small" c={colors.sobreAzul}>
               Chamada aberta
             </T>
-            <T v="display" c={colors.branco} accessibilityLabel={`Faltam ${mmss(remaining)}`}>
+            <T v="display" c={colors.branco} slant accessibilityLabel={`Faltam ${mmss(remaining)}`}>
               {mmss(remaining)}
             </T>
             <SlantBar ratio={remaining / (session?.windowMs ?? 1)} onDark />
-            <T v="heading" c={colors.branco}>
-              {presentLine(present, roster.length)}
-            </T>
-            <Button title="Encerrar chamada" kind="onDark" icon="stop-circle-outline" onPress={() => session && api.closeSession(session.id).then(setSession).catch(fail)} />
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+              <T v="title" c={colors.acao} slant style={{ fontFamily: "Outfit_800ExtraBold", fontSize: 40, lineHeight: 44 }}>
+                {present}/{roster.length}
+              </T>
+              <T v="body" c={colors.sobreAzul}>
+                presentes
+              </T>
+            </View>
+            <Button title="Encerrar chamada" kind="outline" icon="stop-circle-outline" onPress={() => session && api.closeSession(session.id).then(setSession).catch(fail)} />
           </View>
         ) : (
           <View style={{ gap: 2, paddingTop: 6 }}>
@@ -190,7 +185,7 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
         ) : (
           <>
             {!isOpen && (
-              <View style={{ gap: 12 }}>
+              <Panel>
                 <SectionTitle>{session ? "Nova chamada" : "Iniciar chamada"}</SectionTitle>
                 <T v="small" c={colors.mudo}>
                   Tempo que os alunos têm para marcar presença.
@@ -205,11 +200,11 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
                   ]}
                 />
                 <Button title="Iniciar chamada" icon="radio" onPress={startCall} busy={busy} />
-              </View>
+              </Panel>
             )}
 
             {alerts.length > 0 && (
-              <View style={{ backgroundColor: colors.laranjaClaro, borderRadius: 14, padding: 16, gap: 10 }}>
+              <Panel tone="warn">
                 <T v="heading" c={colors.laranjaTexto}>
                   Para revisar ({alerts.length})
                 </T>
@@ -218,46 +213,42 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
                     <T v="small" c={colors.laranjaTexto} style={{ fontFamily: "Outfit_600SemiBold" }}>
                       {ALERT_LABEL[a.kind] ?? a.kind}
                     </T>
-                    <T v="small" c={colors.mudo}>
+                    <T v="small" c={colors.laranjaTexto}>
                       {a.details}
                     </T>
                   </View>
                 ))}
-              </View>
-            )}
-
-            {session && (
-              <View>
-                <SectionTitle right={<Chip text={`${present} de ${roster.length}`} tone="info" />}>Presença</SectionTitle>
-                {roster.length === 0 && <Empty title="Nenhum aluno na turma" text="Peça para os alunos entrarem com o código da turma." />}
-                {roster.map((r, i) => (
-                  <Row key={r.studentId} last={i === roster.length - 1}>
-                    <Avatar name={r.name} />
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <T v="body" style={{ fontFamily: "Outfit_600SemiBold" }}>
-                        {r.name}
-                      </T>
-                      {r.present ? <Chip text={r.method === "MANUAL" ? "Presente, marcado por você" : "Presente"} tone="ok" /> : <Chip text="Ausente" tone="mute" />}
-                    </View>
-                    <Button
-                      title={r.present ? "Desfazer" : "Marcar"}
-                      kind="secondary"
-                      small
-                      onPress={() => session && api.manual(session.id, r.studentId, !r.present).then(refresh).catch(fail)}
-                    />
-                  </Row>
-                ))}
-              </View>
+              </Panel>
             )}
 
             {session && (
               <View style={{ gap: 12 }}>
+                <SectionTitle right={<Chip text={`${present} de ${roster.length}`} tone="info" />}>A sala</SectionTitle>
+                {roster.length === 0 ? (
+                  <Empty title="Nenhum aluno na turma" text="Peça para os alunos entrarem com o código da turma." />
+                ) : (
+                  <>
+                    <T v="small" c={colors.mudo}>
+                      Toque num aluno para marcar ou desfazer a presença.
+                    </T>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                      {roster.map((r) => (
+                        <StudentTile key={r.studentId} name={r.name} present={r.present} width={tileW} onPress={() => api.manual(session.id, r.studentId, !r.present).then(refresh).catch(fail)} />
+                      ))}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
+
+            {session && (
+              <Panel>
                 <SectionTitle>Enquete rápida</SectionTitle>
                 <Field placeholder="Pergunta para a turma" value={pollPrompt} onChangeText={setPollPrompt} />
                 <Field placeholder="Opções separadas por vírgula" value={pollOpts} onChangeText={setPollOpts} />
                 <Button
                   title="Publicar enquete"
-                  kind="secondary"
+                  kind="brand"
                   disabled={pollPrompt.trim().length < 2}
                   onPress={async () => {
                     const opts = pollOpts.split(",").map((o) => o.trim()).filter(Boolean);
@@ -281,7 +272,7 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
                     {a.state === "ABERTA" ? <Button title="Encerrar enquete" kind="ghost" small onPress={() => api.closePoll(a.id).then(refresh).catch(fail)} /> : <Chip text="Encerrada" tone="mute" />}
                   </View>
                 ))}
-              </View>
+              </Panel>
             )}
           </>
         )}

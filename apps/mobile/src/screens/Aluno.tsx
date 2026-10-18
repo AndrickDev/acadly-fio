@@ -1,10 +1,10 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { Alert, ScrollView, Vibration, View } from "react-native";
 import type { Activity, Api, ClassItem, Decision, OpenSession, RuleInfo } from "../api";
+import { Poster } from "../poster";
 import type { ProximityProvider } from "../proximity";
 import { deviceId } from "../storage";
-import { Avatar, Button, Empty, Field, Hero, Row, SectionTitle, SlantBar, T, colors, firstName, mmss, useInterval } from "../ui";
+import { Button, Empty, Field, Hero, Orb, Panel, SectionTitle, SlantBar, T, colors, firstName, mmss, useInterval, type OrbState } from "../ui";
 
 export function Aluno({ api, provider, userName }: { api: Api; provider: ProximityProvider; userName: string }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -43,7 +43,9 @@ export function Aluno({ api, provider, userName }: { api: Api; provider: Proximi
     setResult(null);
     try {
       const [reading, dev] = await Promise.all([provider.scan(o.id), deviceId()]);
-      setResult({ ...(await api.checkin(o.id, { deviceId: dev, ...reading })), sessionId: o.id });
+      const d = await api.checkin(o.id, { deviceId: dev, ...reading });
+      setResult({ ...d, sessionId: o.id });
+      if (d.ok) Vibration.vibrate(70);
     } catch (e) {
       Alert.alert("Não foi possível marcar", e instanceof Error ? e.message : String(e));
     } finally {
@@ -62,79 +64,71 @@ export function Aluno({ api, provider, userName }: { api: Api; provider: Proximi
     }
   };
 
+  const o = open[0];
+  const mine = o && result?.sessionId === o.id ? result : null;
+  const done = !!mine && (mine.ok || mine.code === "REJECT_ALREADY_CHECKED_IN");
+  const remaining = o ? Math.max(0, o.openedAt + o.windowMs - Date.now()) : 0;
+  const orb: OrbState = !o ? "esperando" : busy ? "buscando" : done ? "feito" : "pronto";
+
   return (
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-      <Hero>
+      <Hero deep>
         <T v="small" c={colors.sobreAzul}>
-          Aluno
-        </T>
-        <T v="title" c={colors.branco}>
           Olá, {firstName(userName)}
         </T>
-
-        {open.length === 0 ? (
-          <View style={{ gap: 4, paddingTop: 10 }}>
+        {o ? (
+          <View style={{ gap: 10 }}>
             <T v="heading" c={colors.branco}>
+              {o.className}
+            </T>
+            <T v="display" c={colors.branco} slant accessibilityLabel={`Faltam ${mmss(remaining)}`}>
+              {mmss(remaining)}
+            </T>
+            <SlantBar ratio={remaining / o.windowMs} onDark />
+          </View>
+        ) : (
+          <View style={{ gap: 4 }}>
+            <T v="title" c={colors.branco} slant>
               Nenhuma chamada agora
             </T>
             <T v="small" c={colors.sobreAzul}>
               Quando o professor iniciar, ela aparece aqui. Deixe o app aberto.
             </T>
           </View>
-        ) : (
-          open.map((o) => {
-            const remaining = Math.max(0, o.openedAt + o.windowMs - Date.now());
-            const mine = result?.sessionId === o.id ? result : null;
-            const done = !!mine && (mine.ok || mine.code === "REJECT_ALREADY_CHECKED_IN");
-            return (
-              <View key={o.id} style={{ gap: 12, paddingTop: 10 }}>
-                <T v="heading" c={colors.branco}>
-                  {o.className}
-                </T>
-                <T v="display" c={colors.branco} accessibilityLabel={`Faltam ${mmss(remaining)}`}>
-                  {mmss(remaining)}
-                </T>
-                <SlantBar ratio={remaining / o.windowMs} onDark />
-
-                {done ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
-                    <Ionicons name="checkmark-circle" size={36} color={colors.branco} />
-                    <View style={{ flex: 1 }}>
-                      <T v="heading" c={colors.branco}>
-                        Presença registrada
-                      </T>
-                      <T v="small" c={colors.sobreAzul}>
-                        Regra {mine!.rule}, {ruleTitle(mine!.rule).toLowerCase() || "aceito"}.
-                      </T>
-                    </View>
-                  </View>
-                ) : (
-                  <Button title={busy ? "Procurando o professor" : "Marcar presença"} kind="onDark" icon="radio" busy={busy} onPress={() => checkIn(o)} />
-                )}
-
-                {mine && !done && (
-                  <View style={{ backgroundColor: "rgba(255,255,255,0.14)", borderRadius: 14, padding: 14, gap: 2 }}>
-                    <T v="heading" c={colors.branco}>
-                      Não foi possível registrar
-                    </T>
-                    <T v="small" c={colors.sobreAzul}>
-                      {mine.reason}
-                    </T>
-                    <T v="small" c={colors.sobreAzul}>
-                      Regra {mine.rule}: {ruleTitle(mine.rule)}
-                    </T>
-                  </View>
-                )}
-              </View>
-            );
-          })
         )}
       </Hero>
 
+      <View style={{ marginTop: -150, alignItems: "center", zIndex: 2 }}>
+        <Orb state={orb} onPress={() => o && checkIn(o)} />
+      </View>
+
       <View style={{ paddingHorizontal: 20, gap: 4 }}>
-        {open.map((o) =>
-          (activities[o.id] ?? []).map((a) => (
-            <View key={a.id} style={{ gap: 8, paddingBottom: 16 }}>
+        {done && (
+          <View style={{ alignItems: "center", paddingBottom: 12 }}>
+            <T v="heading">Presença registrada</T>
+            <T v="small" c={colors.mudo}>
+              Regra {mine!.rule}: {ruleTitle(mine!.rule).toLowerCase() || "aceito"}.
+            </T>
+          </View>
+        )}
+        {mine && !done && (
+          <Panel tone="warn">
+            <T v="heading" c={colors.laranjaTexto}>
+              Não foi possível registrar
+            </T>
+            <T v="small" c={colors.laranjaTexto}>
+              {mine.reason} (regra {mine.rule}: {ruleTitle(mine.rule).toLowerCase()}).
+            </T>
+          </Panel>
+        )}
+
+        {open.slice(1).map((x) => (
+          <Button key={x.id} title={`Marcar presença em ${x.className}`} kind="secondary" onPress={() => checkIn(x)} />
+        ))}
+
+        {open.map((s) =>
+          (activities[s.id] ?? []).map((a) => (
+            <View key={a.id} style={{ gap: 10, paddingBottom: 12 }}>
               <SectionTitle>Enquete</SectionTitle>
               <T v="body">{a.prompt}</T>
               {a.options.map((opt, i) => (
@@ -146,19 +140,14 @@ export function Aluno({ api, provider, userName }: { api: Api; provider: Proximi
 
         <SectionTitle>Minhas turmas</SectionTitle>
         {classes.length === 0 && <Empty title="Você ainda não está em nenhuma turma" text="Peça o código ao professor e digite abaixo." />}
-        {classes.map((k, i) => (
-          <Row key={k.id} last={i === classes.length - 1}>
-            <Avatar name={k.name} />
-            <T v="body" style={{ fontFamily: "Outfit_600SemiBold", flex: 1 }}>
-              {k.name}
-            </T>
-          </Row>
+        {classes.map((k) => (
+          <Poster key={k.id} name={k.name} />
         ))}
 
-        <View style={{ paddingTop: 24, gap: 12 }}>
+        <View style={{ paddingTop: 20, gap: 12 }}>
           <SectionTitle>Entrar em uma turma</SectionTitle>
           <Field placeholder="Código da turma" autoCapitalize="characters" value={code} onChangeText={setCode} onSubmitEditing={joinClass} returnKeyType="done" />
-          <Button title="Entrar na turma" kind="secondary" onPress={joinClass} disabled={code.trim().length < 4} />
+          <Button title="Entrar na turma" kind="brand" onPress={joinClass} disabled={code.trim().length < 4} />
         </View>
       </View>
     </ScrollView>

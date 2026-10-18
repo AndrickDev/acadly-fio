@@ -1,31 +1,34 @@
 /**
- * Identidade Unifio. Azul #004998 e laranja #ED8A25 vêm do logotipo oficial (pixels exatos).
+ * Identidade Unifio, versão laranja. O laranja #ED8A25 (do logotipo) é a cor dominante: ação, destaque,
+ * aba ativa e progresso. O azul do logotipo sai da interface e fica só no ícone.
+ * Os nomes `azul*` continuam existindo (os componentes os leem) mas hoje apontam para o laranja queimado
+ * (#B45309, texto branco com 5:1) e seus tons. Neutros quentes (marrom-grafite) no lugar do azul-acinzentado.
  *
  * Dois temas com os MESMOS nomes de cor. `colors` é um objeto único que `applyTheme` atualiza;
  * o App remonta a árvore ao trocar de tema, então os componentes só leem `colors.x`.
- *
- * Regra de uso: azul é a ação; laranja é "olhe aqui" (progresso, atenção, revisar).
  * No claro, laranja nunca é texto sobre branco (contraste 2,6:1): texto usa `laranjaTexto`.
  */
 const claro = {
-  marca: "#004998", // azul do logotipo, nunca muda
-  azul: "#004998",
-  azulEscuro: "#00305F",
-  azulClaro: "#E6EEF7",
-  azulTexto: "#004998",
+  marca: "#004998", // azul do logotipo, só para o ícone
+  azul: "#B45309",
+  azulEscuro: "#8A3F06",
+  azulClaro: "#FBEBDA",
+  azulTexto: "#8A3F06",
   laranja: "#ED8A25",
   laranjaClaro: "#FDF0E1",
   laranjaTexto: "#8A4B00",
+  acao: "#ED8A25",
+  acaoTexto: "#1C1511",
   branco: "#FFFFFF",
   superficie: "#FFFFFF",
   ativo: "#FFFFFF",
-  ativoTexto: "#004998",
-  hero: "#004998",
-  fundo: "#F4F7FB",
-  tinta: "#0E1B2C",
-  mudo: "#5B6B7F",
-  linha: "#DDE5EE",
-  chipMudo: "#E9EEF4",
+  ativoTexto: "#8A3F06",
+  hero: "#1F1712",
+  fundo: "#F8F4EF",
+  tinta: "#1C1511",
+  mudo: "#6B5F55",
+  linha: "#E7DED4",
+  chipMudo: "#EFE8E0",
   verde: "#1E8E5A",
   verdeClaro: "#E3F4EB",
   vermelho: "#C62828",
@@ -36,23 +39,25 @@ const claro = {
 
 const escuro: typeof claro = {
   marca: "#004998",
-  azul: "#2A6FDB",
-  azulEscuro: "#0E2D5C",
-  azulClaro: "#16294A",
-  azulTexto: "#7DB3FF",
+  azul: "#B45309",
+  azulEscuro: "#8A3F06",
+  azulClaro: "#2D2012",
+  azulTexto: "#F2A55A",
   laranja: "#ED8A25",
   laranjaClaro: "#2D2012",
   laranjaTexto: "#F2A55A",
+  acao: "#ED8A25",
+  acaoTexto: "#1C1511",
   branco: "#FFFFFF",
-  superficie: "#121C2E",
-  ativo: "#2B466F",
+  superficie: "#1D1611",
+  ativo: "#43301F",
   ativoTexto: "#FFFFFF",
-  hero: "#0E2D5C",
-  fundo: "#0A1220",
-  tinta: "#EAF0F8",
-  mudo: "#95A5BC",
-  linha: "#25364F",
-  chipMudo: "#1B2A44",
+  hero: "#2A1B10",
+  fundo: "#120D09",
+  tinta: "#F5EEE6",
+  mudo: "#A8998A",
+  linha: "#33291F",
+  chipMudo: "#2A2119",
   verde: "#39D08F",
   verdeClaro: "#12301F",
   vermelho: "#FF7A7A",

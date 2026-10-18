@@ -78,7 +78,7 @@ export class ApiError extends Error {
   }
 }
 
-export function makeApi(baseUrl: string, token: string | null) {
+export function makeApi(baseUrl: string, token: string | null, onUnauthorized?: () => void) {
   const base = baseUrl.replace(/\/+$/, "");
   async function req<T>(method: string, path: string, body?: unknown, okStatuses: number[] = []): Promise<T> {
     const ctrl = new AbortController();
@@ -91,6 +91,7 @@ export function makeApi(baseUrl: string, token: string | null) {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && token) onUnauthorized?.(); // sessão salva que o servidor não reconhece mais
       if (!res.ok && !okStatuses.includes(res.status)) throw new ApiError(res.status, data);
       return data as T;
     } finally {

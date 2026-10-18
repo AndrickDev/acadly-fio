@@ -48,8 +48,6 @@ export default function App() {
     })();
   }, []);
 
-  const api = useMemo(() => makeApi(baseUrl, token), [baseUrl, token]);
-  const provider = useMemo(() => simulatedProvider(api), [api]);
 
   const login = async (name: string, role: Role) => {
     setBusy(true);
@@ -74,6 +72,9 @@ export default function App() {
     setUser(null);
     setToken(null);
   };
+
+  const api = useMemo(() => makeApi(baseUrl, token, logout), [baseUrl, token]);
+  const provider = useMemo(() => simulatedProvider(api), [api]);
 
   if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: colors.hero }} />;
 

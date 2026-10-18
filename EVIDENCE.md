@@ -85,3 +85,48 @@ A ordem é intencional. As verificações baratas e sem segredo vêm primeiro (R
 - **Tentativa (`attempts`)**: log de auditoria de cada validação com `rule` e `reason`. Alimenta o Painel de Evidências. `[PROJETO]`
 - **AlertaAnomalia (`alerts`)**: `session_id, kind, details, at`. `[PROJETO]`
 - **Atividade em tempo real (`activities`, `responses`)**: enquetes e quizzes são recurso à parte da presença. `[OBSERVADO]` S1/S4
+
+---
+
+## 5. O que o Acadly faz de bom (para copiar o espírito, não o código)
+
+| Prática | Evidência | Como entra no acadly-fio |
+|---|---|---|
+| **Zero esforço do aluno**: abre o app, o resto é automático; sem GPS. | `[OBSERVADO]` S1, S2 | Mantido. Nenhum passo extra para o aluno. |
+| **Início flexível** para o professor: app, web, add-in de PowerPoint ou execução agendada. | `[OBSERVADO]` acadly.com | Agendamento da chamada pelo horário da turma (futuro). |
+| **Rádios desligam ao fim da janela** (bateria e privacidade). | `[OBSERVADO]` S1, S2 | Mantido no `BleProvider`: scan só durante a janela. |
+| **Casos duvidosos são sinalizados para revisão do professor**, não só aceitos ou bloqueados. Cita corredor, estacionamento, "dispositivos que andam juntos" e "dispositivos compartilhados". | `[OBSERVADO]` acadly.com ("flags them in realtime") | Novo estado **"Presente (revisar)"**. Zero esforço do aluno, uma revisão do professor ao fim. |
+| **Plano B manual** (sem celular, bateria acabou, falha de Bluetooth). | `[OBSERVADO]` S1, S2 | Já existe (presença manual). |
+| **Tolerância a falha**: dados móveis bastam; se falhar, o professor corrige no fim da aula. | `[OBSERVADO]` S1, S2 | Já existe (check-in idempotente, edição manual). |
+| **Integração com o LMS** (Moodle, Canvas, Blackboard) por plugin LTI. É oferta paga do Acadly (edição enterprise). | `[OBSERVADO]` Capterra, S1 | A Fio faz a própria integração, sem pagar o Acadly (ver §6). |
+| **Engajamento junto da presença**: enquetes, quizzes, nuvem de palavras, chat. | `[OBSERVADO]` S4, Capterra | Enquete já existe. O resto é futuro. |
+| **Relatórios e alertas** para coordenação. | `[OBSERVADO]` acadly.com | Exportação CSV e PDF (ver §6). |
+
+### Lacunas: o que o Acadly NÃO documenta publicamente
+- **Como separa a sala ao lado do corredor.** Diz só que usa tecnologia "patent-pending" que detecta anomalias, e que "só marca quem estava fisicamente na sala, não em algum lugar próximo". O mecanismo é inferência nossa (sinal + mesh).
+- **Modo prova, entrada e saída, atraso e saída antecipada.** Nada nas fontes. A listagem da Capterra cita "tests and assessments", sem detalhes.
+- **Matrícula por código de sala.** O Acadly não usa. A matrícula é feita pelo professor ou pela instituição, por convite via e-mail ou LMS. O código de 6 letras do acadly-fio é decisão nossa `[PROJETO]`.
+
+### Fontes adicionais
+- S7 — Acadly (página principal): https://www.acadly.com/here
+- S8 — FAQ UIC: https://uic.acadly.com/faq.html
+- S9 — Capterra: https://www.capterra.com/p/181697/Acadly/
+- S10 — Página para alunos: https://moodle-lti.acadly.com/for-students.html
+
+## 6. Contexto da Fio / Unifio `[PROJETO]` (informado pelo desenvolvedor, mais o que o site da Unifio mostra)
+
+- **Objetivo:** sistema **próprio** da faculdade, para modernizar a chamada. O desenvolvedor é da Fio. Sem pagar plataforma de terceiros.
+- **Função principal:** chamada por proximidade, no celular do professor e do aluno.
+- **Moodle:** em `conhecer.unifio.edu.br`. O caminho `/login/index.php` é de Moodle, o que é inferência. Versão, plugins e método de login ainda não conhecidos.
+- **Sistema acadêmico:** Portal do Aluno, do Professor e do Coordenador em `waeweb.unifio.edu.br` (nome do produto desconhecido). Não sabemos se aceita importar CSV.
+- **E-mail institucional:** Outlook e Gmail.
+- **Ensalamento:** a faculdade publica o ensalamento por semestre. Pode vincular turma a sala no futuro.
+- **Prova:** hoje se assina **ATA em papel**. O digital deve começar **em paralelo** ao papel, até a faculdade aprovar substituir.
+- **Cadastro:** idealmente reaproveitar os dados do Moodle (turmas e alunos), sem digitação.
+- **Testes de Bluetooth:** 2 celulares Android. iPhone fora do escopo por enquanto.
+- **Visual:** azul, laranja e branco. O site da Unifio traz o logotipo em versões "Azul" e "Branco". Os hex oficiais ainda não foram confirmados.
+
+### Decisões de produto derivadas
+1. **Integração Moodle em fases:** CSV, depois API de matrícula com token de serviço, depois login via Moodle. Custo zero de licença (a API do Moodle é nativa).
+2. **Corredor e sala ao lado:** não há solução 100%. Meta: melhor que a ATA em papel, em que qualquer um assina por um amigo. Estratégia: sinal + testemunhas + estado "revisar", sem passo extra para aluno e professor.
+3. **Modo Prova:** primeiro um **checklist digital do fiscal** (entrada e saída com horário, funciona sem internet), que gera a ATA em PDF para assinar. QR do aluno só depois, para ganhar velocidade.

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import type { Api, AttemptRow, RuleInfo } from "../api";
-import { Badge, Card, H, Mute, c } from "../ui";
+import { CONFIDENCE_LABEL } from "../labels";
+import { Chip, Row, SectionTitle, T, colors } from "../ui";
 
-const CONF_COLOR = { OBSERVADO: c.ok, INFERIDO: c.warn, PROJETO: c.mute } as const;
+const TONE = { OBSERVADO: "ok", INFERIDO: "warn", PROJETO: "mute" } as const;
 
-/** Painel de Evidências do Acadly: catálogo R1..R10 e qual regra decidiu cada tentativa, ao vivo. */
+/** Painel de Evidências: as regras extraídas do Acadly e qual delas decidiu cada tentativa, ao vivo. */
 export function EvidenceBoard({ api, attempts, names }: { api: Api; attempts: AttemptRow[]; names: Record<string, string> }) {
   const [rules, setRules] = useState<RuleInfo[]>([]);
   useEffect(() => {
@@ -16,37 +17,52 @@ export function EvidenceBoard({ api, attempts, names }: { api: Api; attempts: At
   const last = attempts[0];
 
   return (
-    <View style={{ gap: 12 }}>
-      <Card>
-        <H>Painel de Evidências</H>
-        <Mute>Regras extraídas do Acadly (EVIDENCE.md) e a regra que decidiu cada validação.</Mute>
-        {last ? (
-          <View style={{ borderLeftWidth: 4, borderLeftColor: last.ok ? c.ok : c.bad, paddingLeft: 10, marginTop: 4 }}>
-            <Text style={{ fontWeight: "800", color: last.ok ? c.ok : c.bad }}>
-              Última: {last.rule} · {last.ok ? "ACEITO" : "BLOQUEADO"}
-            </Text>
-            <Text style={{ color: c.ink }}>
-              {names[last.studentId] ?? "aluno"} — {last.reason}
-            </Text>
-          </View>
-        ) : (
-          <Mute>Nenhuma tentativa ainda nesta sessão.</Mute>
-        )}
-      </Card>
+    <View style={{ gap: 4 }}>
+      <SectionTitle>Última validação</SectionTitle>
+      {last ? (
+        <View style={{ borderLeftWidth: 4, borderLeftColor: last.ok ? colors.verde : colors.vermelho, paddingLeft: 12, gap: 2, paddingVertical: 4 }}>
+          <T v="heading" c={last.ok ? colors.verde : colors.vermelho}>
+            {last.ok ? "Aceito" : "Bloqueado"} pela regra {last.rule}
+          </T>
+          <T v="small" c={colors.mudo}>
+            {names[last.studentId] ?? "Aluno"}: {last.reason}
+          </T>
+        </View>
+      ) : (
+        <T v="small" c={colors.mudo}>
+          Ainda não houve tentativas nesta chamada.
+        </T>
+      )}
 
-      {rules.map((r) => {
+      <View style={{ paddingTop: 12 }}>
+        <SectionTitle>Regras do Acadly</SectionTitle>
+        <T v="small" c={colors.mudo} style={{ paddingBottom: 4 }}>
+          Cada regra mostra de onde veio e quantas vezes decidiu nesta chamada.
+        </T>
+      </View>
+      {rules.map((r, i) => {
         const n = count(r.id);
         const hot = last?.rule === r.id;
         return (
-          <Card key={r.id} style={{ borderColor: hot ? c.brand : c.line, borderWidth: hot ? 2 : 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <Text style={{ fontWeight: "900", color: c.brand }}>{r.id}</Text>
-              <Text style={{ fontWeight: "700", color: c.ink, flexShrink: 1 }}>{r.title}</Text>
-              <Badge text={r.confidence} color={CONF_COLOR[r.confidence]} />
-              {n > 0 && <Badge text={`${n}×`} color={c.brand} />}
+          <Row key={r.id} last={i === rules.length - 1}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: hot ? colors.azul : colors.azulClaro }}>
+              <T v="small" c={hot ? colors.branco : colors.azul} style={{ fontFamily: "Outfit_700Bold" }}>
+                {r.id}
+              </T>
             </View>
-            <Mute>{r.description}</Mute>
-          </Card>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="body" style={{ fontFamily: "Outfit_600SemiBold" }}>
+                {r.title}
+              </T>
+              <T v="small" c={colors.mudo}>
+                {r.description}
+              </T>
+              <View style={{ flexDirection: "row", gap: 6, paddingTop: 4, flexWrap: "wrap" }}>
+                <Chip text={CONFIDENCE_LABEL[r.confidence]} tone={TONE[r.confidence]} />
+                {n > 0 && <Chip text={n === 1 ? "decidiu 1 vez" : `decidiu ${n} vezes`} tone="info" />}
+              </View>
+            </View>
+          </Row>
         );
       })}
     </View>

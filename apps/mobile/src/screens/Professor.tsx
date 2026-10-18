@@ -1,10 +1,12 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TextInput, View } from "react-native";
-import type { Activity, Api, AlertRow, AttemptRow, AttendanceRow, ClassItem, SessionInfo } from "../api";
-import { Badge, Button, Card, H, Mute, c, mmss, s, useInterval } from "../ui";
+import { Alert, Pressable, ScrollView, View } from "react-native";
+import type { Activity, AlertRow, Api, AttemptRow, AttendanceRow, ClassItem, SessionInfo } from "../api";
+import { ALERT_LABEL } from "../labels";
+import { Avatar, Button, Chip, Empty, Field, Hero, IconButton, Row, SectionTitle, Segmented, SlantBar, T, colors, firstName, mmss, presentLine, useInterval } from "../ui";
 import { EvidenceBoard } from "./Evidencias";
 
-export function Professor({ api }: { api: Api }) {
+export function Professor({ api, userName }: { api: Api; userName: string }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [cls, setCls] = useState<ClassItem | null>(null);
   const [newName, setNewName] = useState("");
@@ -17,11 +19,11 @@ export function Professor({ api }: { api: Api }) {
   const [busy, setBusy] = useState(false);
   const [offset, setOffset] = useState(0); // serverNow - Date.now()
   const [, tick] = useState(0);
-  const [windowMin, setWindowMin] = useState(2);
+  const [windowMin, setWindowMin] = useState<"2" | "5" | "10">("2");
   const [pollPrompt, setPollPrompt] = useState("");
   const [pollOpts, setPollOpts] = useState("Sim, Não");
 
-  const fail = (e: unknown) => Alert.alert("Erro", e instanceof Error ? e.message : String(e));
+  const fail = (e: unknown) => Alert.alert("Não deu certo", e instanceof Error ? e.message : String(e));
 
   const loadClasses = useCallback(() => api.myClasses().then(setClasses).catch(() => {}), [api]);
   useInterval(() => !cls && loadClasses(), 5000);
@@ -54,14 +56,15 @@ export function Professor({ api }: { api: Api }) {
 
   const names = useMemo(() => Object.fromEntries(roster.map((r) => [r.studentId, r.name])), [roster]);
   const present = roster.filter((r) => r.present).length;
+  const isOpen = session?.state === "ABERTA";
+  const remaining = isOpen && session.openedAt ? Math.max(0, session.openedAt + session.windowMs - (Date.now() + offset)) : 0;
 
   const startCall = async () => {
     if (!cls) return;
     setBusy(true);
     try {
-      const created = await api.createSession(cls.id, windowMin * 60_000);
-      const opened = await api.openSession(created.id);
-      setSession(opened);
+      const created = await api.createSession(cls.id, Number(windowMin) * 60_000);
+      setSession(await api.openSession(created.id));
     } catch (e) {
       fail(e);
     } finally {
@@ -69,161 +72,220 @@ export function Professor({ api }: { api: Api }) {
     }
   };
 
-  const remaining = session?.state === "ABERTA" && session.openedAt ? session.openedAt + session.windowMs - (Date.now() + offset) : 0;
+  const createClass = async () => {
+    if (newName.trim().length < 2) return;
+    try {
+      await api.createClass(newName.trim());
+      setNewName("");
+      loadClasses();
+    } catch (e) {
+      fail(e);
+    }
+  };
 
+  /* ---------- lista de turmas ---------- */
   if (!cls) {
     return (
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <H>Minhas turmas</H>
-        {classes.map((k) => (
-          <Card key={k.id}>
-            <Text style={{ fontWeight: "800", fontSize: 17, color: c.ink }}>{k.name}</Text>
-            <Mute>Código para os alunos entrarem: {k.joinCode}</Mute>
-            <Button title="Abrir turma" onPress={() => setCls(k)} />
-          </Card>
-        ))}
-        <Card>
-          <TextInput style={s.input} placeholder="Nome da nova turma" value={newName} onChangeText={setNewName} />
-          <Button
-            title="Criar turma"
-            disabled={newName.trim().length < 2}
-            onPress={async () => {
-              try {
-                await api.createClass(newName.trim());
-                setNewName("");
-                loadClasses();
-              } catch (e) {
-                fail(e);
-              }
-            }}
-          />
-        </Card>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+        <Hero>
+          <T v="small" c={colors.sobreAzul}>
+            Professor
+          </T>
+          <T v="title" c={colors.branco}>
+            Olá, {firstName(userName)}
+          </T>
+        </Hero>
+        <View style={{ paddingHorizontal: 20, gap: 4 }}>
+          <SectionTitle>Minhas turmas</SectionTitle>
+          {classes.length === 0 && <Empty title="Nenhuma turma ainda" text="Crie a primeira abaixo e passe o código para os alunos." />}
+          {classes.map((k, i) => (
+            <Pressable key={k.id} accessibilityRole="button" accessibilityLabel={`Abrir turma ${k.name}`} onPress={() => setCls(k)}>
+              <Row last={i === classes.length - 1}>
+                <Avatar name={k.name} />
+                <View style={{ flex: 1 }}>
+                  <T v="body" style={{ fontFamily: "Outfit_600SemiBold" }}>
+                    {k.name}
+                  </T>
+                  <T v="small" c={colors.mudo}>
+                    Código {k.joinCode}
+                  </T>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={colors.mudo} />
+              </Row>
+            </Pressable>
+          ))}
+
+          <View style={{ paddingTop: 24, gap: 12 }}>
+            <SectionTitle>Nova turma</SectionTitle>
+            <Field placeholder="Nome da turma" value={newName} onChangeText={setNewName} onSubmitEditing={createClass} returnKeyType="done" />
+            <Button title="Criar turma" icon="add" onPress={createClass} disabled={newName.trim().length < 2} />
+          </View>
+        </View>
       </ScrollView>
     );
   }
 
+  /* ---------- turma aberta ---------- */
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <View style={s.row}>
-        <Button
-          title="‹ Turmas"
-          kind="ghost"
-          onPress={() => {
-            setCls(null);
-            setSession(null);
-          }}
-        />
-        <Text style={{ fontWeight: "800", fontSize: 17, color: c.ink, flexShrink: 1 }}>{cls.name}</Text>
-      </View>
-      <Mute>Código da turma: {cls.joinCode}</Mute>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+      <Hero>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginLeft: -8 }}>
+          <IconButton
+            icon="arrow-back"
+            label="Voltar para as turmas"
+            onPress={() => {
+              setCls(null);
+              setSession(null);
+              setRoster([]);
+            }}
+          />
+          <T v="title" c={colors.branco} style={{ flexShrink: 1 }}>
+            {cls.name}
+          </T>
+        </View>
+        <T v="small" c={colors.sobreAzul}>
+          Código da turma {cls.joinCode}
+        </T>
 
-      <View style={s.row}>
-        <Button title="Chamada" kind={tab === "chamada" ? "primary" : "ghost"} onPress={() => setTab("chamada")} style={{ flex: 1 }} />
-        <Button title="Evidências" kind={tab === "evidencias" ? "primary" : "ghost"} onPress={() => setTab("evidencias")} style={{ flex: 1 }} />
-      </View>
-
-      {tab === "evidencias" ? (
-        <EvidenceBoard api={api} attempts={attempts} names={names} />
-      ) : (
-        <>
-          <Card>
-            {!session || session.state === "FINALIZADA" ? (
-              <>
-                <H>{session ? "Chamada finalizada" : "Nenhuma chamada em andamento"}</H>
-                {session && <Mute>{present} presentes de {roster.length}.</Mute>}
-                <Mute>Duração da chamada (o Acadly usa ~2 min; use 10 min para testar com calma):</Mute>
-                <View style={s.row}>
-                  {[2, 5, 10].map((m) => (
-                    <Button key={m} title={`${m} min`} kind={windowMin === m ? "primary" : "ghost"} onPress={() => setWindowMin(m)} style={{ flex: 1, minHeight: 40 }} />
-                  ))}
-                </View>
-                <Button title={session ? "Iniciar nova chamada" : "Iniciar chamada"} onPress={startCall} busy={busy} />
-              </>
-            ) : (
-              <>
-                <View style={s.row}>
-                  <Badge text="CHAMADA ABERTA" color={c.ok} />
-                  <Text style={{ fontSize: 28, fontWeight: "900", color: c.ink }}>{mmss(remaining)}</Text>
-                </View>
-                <Mute>Alunos devem estar com o app aberto. Fecha sozinha ao fim do tempo.</Mute>
-                <Button
-                  title="Encerrar agora"
-                  kind="danger"
-                  onPress={() => api.closeSession(session.id).then(setSession).catch(fail)}
-                />
-              </>
+        {isOpen ? (
+          <View style={{ gap: 12, paddingTop: 6 }}>
+            <T v="small" c={colors.sobreAzul}>
+              Chamada aberta
+            </T>
+            <T v="display" c={colors.branco} accessibilityLabel={`Faltam ${mmss(remaining)}`}>
+              {mmss(remaining)}
+            </T>
+            <SlantBar ratio={remaining / (session?.windowMs ?? 1)} onDark />
+            <T v="heading" c={colors.branco}>
+              {presentLine(present, roster.length)}
+            </T>
+            <Button title="Encerrar chamada" kind="onDark" icon="stop-circle-outline" onPress={() => session && api.closeSession(session.id).then(setSession).catch(fail)} />
+          </View>
+        ) : (
+          <View style={{ gap: 2, paddingTop: 6 }}>
+            <T v="heading" c={colors.branco}>
+              {session ? "Chamada encerrada" : "Nenhuma chamada em andamento"}
+            </T>
+            {session && (
+              <T v="small" c={colors.sobreAzul}>
+                {presentLine(present, roster.length)}.
+              </T>
             )}
-          </Card>
+          </View>
+        )}
+      </Hero>
 
-          {alerts.length > 0 && (
-            <Card style={{ borderColor: c.warn }}>
-              <H>⚠ Alertas de anomalia ({alerts.length})</H>
-              {alerts.slice(0, 5).map((a) => (
-                <View key={a.id}>
-                  <Badge text={a.kind} color={c.warn} />
-                  <Mute>{a.details}</Mute>
-                </View>
-              ))}
-            </Card>
-          )}
+      <View style={{ paddingHorizontal: 20, gap: 16 }}>
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { key: "chamada", label: "Chamada" },
+            { key: "evidencias", label: "Evidências" },
+          ]}
+        />
 
-          {session && (
-            <Card>
-              <H>
-                Presença {present}/{roster.length}
-              </H>
-              {roster.map((r) => (
-                <View key={r.studentId} style={[s.row, { justifyContent: "space-between", paddingVertical: 4 }]}>
-                  <View style={{ flexShrink: 1 }}>
-                    <Text style={{ color: c.ink, fontWeight: "600" }}>{r.name}</Text>
-                    {r.present && <Mute>{r.method === "MANUAL" ? "manual" : `automática · ${r.hops ?? 0} salto(s)`}</Mute>}
+        {tab === "evidencias" ? (
+          <EvidenceBoard api={api} attempts={attempts} names={names} />
+        ) : (
+          <>
+            {!isOpen && (
+              <View style={{ gap: 12 }}>
+                <SectionTitle>{session ? "Nova chamada" : "Iniciar chamada"}</SectionTitle>
+                <T v="small" c={colors.mudo}>
+                  Tempo que os alunos têm para marcar presença.
+                </T>
+                <Segmented
+                  value={windowMin}
+                  onChange={setWindowMin}
+                  options={[
+                    { key: "2", label: "2 min" },
+                    { key: "5", label: "5 min" },
+                    { key: "10", label: "10 min" },
+                  ]}
+                />
+                <Button title="Iniciar chamada" icon="radio" onPress={startCall} busy={busy} />
+              </View>
+            )}
+
+            {alerts.length > 0 && (
+              <View style={{ backgroundColor: colors.laranjaClaro, borderRadius: 14, padding: 16, gap: 10 }}>
+                <T v="heading" c={colors.laranjaTexto}>
+                  Para revisar ({alerts.length})
+                </T>
+                {alerts.slice(0, 5).map((a) => (
+                  <View key={a.id} style={{ gap: 2 }}>
+                    <T v="small" c={colors.laranjaTexto} style={{ fontFamily: "Outfit_600SemiBold" }}>
+                      {ALERT_LABEL[a.kind] ?? a.kind}
+                    </T>
+                    <T v="small" c={colors.mudo}>
+                      {a.details}
+                    </T>
                   </View>
-                  <Button
-                    title={r.present ? "Presente ✓" : "Marcar"}
-                    kind={r.present ? "ghost" : "primary"}
-                    style={{ minHeight: 36, paddingHorizontal: 12 }}
-                    onPress={() => api.manual(session.id, r.studentId, !r.present).then(refresh).catch(fail)}
-                  />
-                </View>
-              ))}
-              {roster.length === 0 && <Mute>Nenhum aluno matriculado ainda.</Mute>}
-            </Card>
-          )}
+                ))}
+              </View>
+            )}
 
-          {session && (
-            <Card>
-              <H>Enquete rápida</H>
-              <TextInput style={s.input} placeholder="Pergunta" value={pollPrompt} onChangeText={setPollPrompt} />
-              <TextInput style={s.input} placeholder="Opções separadas por vírgula" value={pollOpts} onChangeText={setPollOpts} />
-              <Button
-                title="Publicar enquete"
-                disabled={pollPrompt.trim().length < 2}
-                onPress={async () => {
-                  const opts = pollOpts.split(",").map((o) => o.trim()).filter(Boolean);
-                  try {
-                    await api.createPoll(session.id, pollPrompt.trim(), opts);
-                    setPollPrompt("");
-                    refresh();
-                  } catch (e) {
-                    fail(e);
-                  }
-                }}
-              />
-              {activities.map((a) => (
-                <View key={a.id} style={{ gap: 4, paddingTop: 8 }}>
-                  <Text style={{ fontWeight: "700", color: c.ink }}>{a.prompt}</Text>
-                  {a.options.map((o, i) => (
-                    <Mute key={i}>
-                      {o}: {a.tally[i]}
-                    </Mute>
-                  ))}
-                  {a.state === "ABERTA" ? <Button title="Encerrar enquete" kind="ghost" onPress={() => api.closePoll(a.id).then(refresh).catch(fail)} /> : <Badge text="ENCERRADA" color={c.mute} />}
-                </View>
-              ))}
-            </Card>
-          )}
-        </>
-      )}
+            {session && (
+              <View>
+                <SectionTitle right={<Chip text={`${present} de ${roster.length}`} tone="info" />}>Presença</SectionTitle>
+                {roster.length === 0 && <Empty title="Nenhum aluno na turma" text="Peça para os alunos entrarem com o código da turma." />}
+                {roster.map((r, i) => (
+                  <Row key={r.studentId} last={i === roster.length - 1}>
+                    <Avatar name={r.name} />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <T v="body" style={{ fontFamily: "Outfit_600SemiBold" }}>
+                        {r.name}
+                      </T>
+                      {r.present ? <Chip text={r.method === "MANUAL" ? "Presente, marcado por você" : "Presente"} tone="ok" /> : <Chip text="Ausente" tone="mute" />}
+                    </View>
+                    <Button
+                      title={r.present ? "Desfazer" : "Marcar"}
+                      kind="secondary"
+                      small
+                      onPress={() => session && api.manual(session.id, r.studentId, !r.present).then(refresh).catch(fail)}
+                    />
+                  </Row>
+                ))}
+              </View>
+            )}
+
+            {session && (
+              <View style={{ gap: 12 }}>
+                <SectionTitle>Enquete rápida</SectionTitle>
+                <Field placeholder="Pergunta para a turma" value={pollPrompt} onChangeText={setPollPrompt} />
+                <Field placeholder="Opções separadas por vírgula" value={pollOpts} onChangeText={setPollOpts} />
+                <Button
+                  title="Publicar enquete"
+                  kind="secondary"
+                  disabled={pollPrompt.trim().length < 2}
+                  onPress={async () => {
+                    const opts = pollOpts.split(",").map((o) => o.trim()).filter(Boolean);
+                    try {
+                      await api.createPoll(session.id, pollPrompt.trim(), opts);
+                      setPollPrompt("");
+                      refresh();
+                    } catch (e) {
+                      fail(e);
+                    }
+                  }}
+                />
+                {activities.map((a) => (
+                  <View key={a.id} style={{ gap: 6, paddingTop: 8 }}>
+                    <T v="heading">{a.prompt}</T>
+                    {a.options.map((o, i) => (
+                      <T key={i} v="small" c={colors.mudo}>
+                        {o}: {a.tally[i]}
+                      </T>
+                    ))}
+                    {a.state === "ABERTA" ? <Button title="Encerrar enquete" kind="ghost" small onPress={() => api.closePoll(a.id).then(refresh).catch(fail)} /> : <Chip text="Encerrada" tone="mute" />}
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+      </View>
     </ScrollView>
   );
 }

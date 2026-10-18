@@ -1,23 +1,27 @@
+import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, Outfit_800ExtraBold, useFonts } from "@expo-google-fonts/outfit";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { Alert, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { makeApi, type Role, type User } from "./src/api";
 import { simulatedProvider } from "./src/proximity";
 import { Aluno } from "./src/screens/Aluno";
+import { Conta } from "./src/screens/Conta";
+import { Login } from "./src/screens/Login";
 import { Professor } from "./src/screens/Professor";
 import { load, save } from "./src/storage";
-import { Button, Card, H, Mute, c, s } from "./src/ui";
+import { TabBar, colors } from "./src/ui";
 
 const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3333";
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, Outfit_800ExtraBold });
   const [ready, setReady] = useState(false);
   const [baseUrl, setBaseUrl] = useState(DEFAULT_URL);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"inicio" | "conta">("inicio");
 
   useEffect(() => {
     (async () => {
@@ -34,16 +38,17 @@ export default function App() {
   const api = useMemo(() => makeApi(baseUrl, token), [baseUrl, token]);
   const provider = useMemo(() => simulatedProvider(api), [api]);
 
-  const login = async (role: Role) => {
+  const login = async (name: string, role: Role) => {
     setBusy(true);
     try {
       await save("baseUrl", baseUrl);
       // reaproveita a conta já criada para este papel (senão cada "Sair" geraria um usuário novo)
       const known = await load(`uid_${role}`);
-      const res = await makeApi(baseUrl, null).login(name.trim(), role, known ?? undefined);
+      const res = await makeApi(baseUrl, null).login(name, role, known ?? undefined);
       await Promise.all([save("user", JSON.stringify(res.user)), save("token", res.token), save(`uid_${role}`, res.user.id)]);
       setUser(res.user);
       setToken(res.token);
+      setTab("inicio");
     } catch (e) {
       Alert.alert("Não conectou", `${e instanceof Error ? e.message : e}\n\nConfira o endereço do servidor e se o celular está na mesma rede.`);
     } finally {
@@ -57,37 +62,34 @@ export default function App() {
     setToken(null);
   };
 
-  if (!ready) return null;
+  if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: colors.azul }} />;
 
   return (
     <SafeAreaProvider>
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
-      <StatusBar style="dark" />
-      {!user ? (
-        <View style={{ padding: 16, gap: 12, paddingTop: 48 }}>
-          <Text style={{ fontSize: 30, fontWeight: "900", color: c.ink }}>Acadly Fio</Text>
-          <Mute>Presença por proximidade, sem GPS.</Mute>
-          <Card>
-            <TextInput style={s.input} placeholder="Seu nome" value={name} onChangeText={setName} />
-            <TextInput style={s.input} placeholder="Endereço do servidor" autoCapitalize="none" autoCorrect={false} value={baseUrl} onChangeText={setBaseUrl} />
-            <Button title="Entrar como Professor" onPress={() => login("PROFESSOR")} busy={busy} disabled={name.trim().length < 2} />
-            <Button title="Entrar como Aluno" kind="ghost" onPress={() => login("ALUNO")} busy={busy} disabled={name.trim().length < 2} />
-          </Card>
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingRight: 72 }}>
-            <H>{user.name}</H>
-            <Mute>{user.role === "PROFESSOR" ? "Professor" : "Aluno"}</Mute>
-          </View>
-          <View style={{ flex: 1 }}>{user.role === "PROFESSOR" ? <Professor api={api} /> : <Aluno api={api} provider={provider} />}</View>
-          {/* rodapé: o botão flutuante do Expo Go cobre o canto superior direito */}
-          <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.card }}>
-            <Button title={`Sair e trocar de perfil (${user.role === "PROFESSOR" ? "Professor" : "Aluno"})`} kind="ghost" onPress={logout} />
-          </View>
-        </View>
-      )}
-    </SafeAreaView>
+      <StatusBar style="light" />
+      <View style={{ flex: 1, backgroundColor: colors.fundo }}>
+        {!user ? (
+          <Login baseUrl={baseUrl} setBaseUrl={setBaseUrl} busy={busy} onLogin={login} />
+        ) : (
+          <>
+            {/* as duas abas ficam montadas para não perder turma e chamada ao trocar de aba */}
+            <View style={{ flex: 1, display: tab === "inicio" ? "flex" : "none" }}>
+              {user.role === "PROFESSOR" ? <Professor api={api} userName={user.name} /> : <Aluno api={api} provider={provider} userName={user.name} />}
+            </View>
+            <View style={{ flex: 1, display: tab === "conta" ? "flex" : "none" }}>
+              <Conta user={user} baseUrl={baseUrl} onLogout={logout} />
+            </View>
+            <TabBar
+              active={tab}
+              onChange={setTab}
+              tabs={[
+                { key: "inicio", label: user.role === "PROFESSOR" ? "Turmas" : "Início", icon: user.role === "PROFESSOR" ? "school-outline" : "home-outline", iconOn: user.role === "PROFESSOR" ? "school" : "home" },
+                { key: "conta", label: "Conta", icon: "person-outline", iconOn: "person" },
+              ]}
+            />
+          </>
+        )}
+      </View>
     </SafeAreaProvider>
   );
 }

@@ -124,9 +124,23 @@ A ordem é intencional. As verificações baratas e sem segredo vêm primeiro (R
 - **Prova:** hoje se assina **ATA em papel**. O digital deve começar **em paralelo** ao papel, até a faculdade aprovar substituir.
 - **Cadastro:** idealmente reaproveitar os dados do Moodle (turmas e alunos), sem digitação.
 - **Testes de Bluetooth:** 2 celulares Android. iPhone fora do escopo por enquanto.
-- **Visual:** azul, laranja e branco. O site da Unifio traz o logotipo em versões "Azul" e "Branco". Os hex oficiais ainda não foram confirmados.
+- **Visual:** azul, laranja e branco. O site da Unifio traz o logotipo em versões "Azul" e "Branco". Cores extraídas do logotipo oficial (pixels exatos): azul `#004998` e laranja `#ED8A25`. No app: azul é ação e estrutura, laranja é atenção e progresso.
 
 ### Decisões de produto derivadas
 1. **Integração Moodle em fases:** CSV, depois API de matrícula com token de serviço, depois login via Moodle. Custo zero de licença (a API do Moodle é nativa).
 2. **Corredor e sala ao lado:** não há solução 100%. Meta: melhor que a ATA em papel, em que qualquer um assina por um amigo. Estratégia: sinal + testemunhas + estado "revisar", sem passo extra para aluno e professor.
 3. **Modo Prova:** primeiro um **checklist digital do fiscal** (entrada e saída com horário, funciona sem internet), que gera a ATA em PDF para assinar. QR do aluno só depois, para ganhar velocidade.
+
+### Acréscimo: o que a App Store mostra do "Acadly Here" `[OBSERVADO]` S7b
+Fonte S7b — https://apps.apple.com/us/app/-/id1554424140 (app separado do Acadly, só para iPhone).
+
+- Janela de **~150 s**, que o administrador pode encerrar antes. (Outras páginas dizem ~2 min.)
+- O processo **é disparado por notificação** no celular do aluno. O histórico cita um bug em que, no iOS 12, a notificação não iniciava a chamada. Isso indica que o app **não precisa estar aberto o tempo todo**, o que a página para alunos sugere. Para o acadly-fio: notificação push ao abrir a chamada `[PROJETO]`.
+- Administrador: cria grupos e sessões, vê a contagem **em tempo real**, edita o status à mão, adiciona **co-administradores** e exporta **CSV por sessão ou consolidado**.
+- Lembretes (versão 1.0.5) e tela de progresso em tempo real para quem faz a chamada (1.1.0).
+- O aluno vê estatísticas de presença no próprio app.
+- Etiquetas de privacidade (declaradas pelo desenvolvedor): coleta nome, e-mail, ID de usuário e dados de uso. **Não declara localização.**
+- Observação de cuidado: a UIC informa que o Acadly também registra a proximidade entre alunos e a usa para rastreamento de contatos. Isso é sensível em LGPD. O acadly-fio **não** deve guardar o grafo de proximidade além do necessário para validar a chamada `[PROJETO]`.
+
+### Decisão sobre engenharia reversa `[PROJETO]`
+Este levantamento usa **só fontes públicas**. Não foi usada nenhuma ferramenta de engenharia reversa (incluindo a REA) sobre o app do Acadly. O mecanismo antifraude é "patent-pending", e replicá-lo a partir de análise do aplicativo traria risco jurídico para a Fio. As regras R1 a R10 são de autoria própria.

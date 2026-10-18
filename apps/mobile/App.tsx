@@ -1,6 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, SafeAreaView, Text, TextInput, View } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { makeApi, type Role, type User } from "./src/api";
 import { simulatedProvider } from "./src/proximity";
 import { Aluno } from "./src/screens/Aluno";
@@ -37,8 +38,10 @@ export default function App() {
     setBusy(true);
     try {
       await save("baseUrl", baseUrl);
-      const res = await makeApi(baseUrl, null).login(name.trim(), role);
-      await Promise.all([save("user", JSON.stringify(res.user)), save("token", res.token)]);
+      // reaproveita a conta já criada para este papel (senão cada "Sair" geraria um usuário novo)
+      const known = await load(`uid_${role}`);
+      const res = await makeApi(baseUrl, null).login(name.trim(), role, known ?? undefined);
+      await Promise.all([save("user", JSON.stringify(res.user)), save("token", res.token), save(`uid_${role}`, res.user.id)]);
       setUser(res.user);
       setToken(res.token);
     } catch (e) {
@@ -57,6 +60,7 @@ export default function App() {
   if (!ready) return null;
 
   return (
+    <SafeAreaProvider>
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar style="dark" />
       {!user ? (
@@ -72,16 +76,18 @@ export default function App() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <View style={[s.row, { justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 12 }]}>
-            <View>
-              <H>{user.name}</H>
-              <Mute>{user.role === "PROFESSOR" ? "Professor" : "Aluno"}</Mute>
-            </View>
-            <Button title="Sair" kind="ghost" onPress={logout} style={{ minHeight: 36 }} />
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingRight: 72 }}>
+            <H>{user.name}</H>
+            <Mute>{user.role === "PROFESSOR" ? "Professor" : "Aluno"}</Mute>
           </View>
-          {user.role === "PROFESSOR" ? <Professor api={api} /> : <Aluno api={api} provider={provider} />}
+          <View style={{ flex: 1 }}>{user.role === "PROFESSOR" ? <Professor api={api} /> : <Aluno api={api} provider={provider} />}</View>
+          {/* rodapé: o botão flutuante do Expo Go cobre o canto superior direito */}
+          <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: c.line, backgroundColor: c.card }}>
+            <Button title={`Sair e trocar de perfil (${user.role === "PROFESSOR" ? "Professor" : "Aluno"})`} kind="ghost" onPress={logout} />
+          </View>
         </View>
       )}
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

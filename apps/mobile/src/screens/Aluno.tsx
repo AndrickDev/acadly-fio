@@ -54,7 +54,7 @@ export function Aluno({ api, provider }: { api: Api; provider: ProximityProvider
   const done = result?.ok || result?.code === "REJECT_ALREADY_CHECKED_IN";
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
       {open.length === 0 ? (
         <Card>
           <H>Nenhuma chamada aberta</H>

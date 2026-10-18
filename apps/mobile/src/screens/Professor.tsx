@@ -17,6 +17,7 @@ export function Professor({ api }: { api: Api }) {
   const [busy, setBusy] = useState(false);
   const [offset, setOffset] = useState(0); // serverNow - Date.now()
   const [, tick] = useState(0);
+  const [windowMin, setWindowMin] = useState(2);
   const [pollPrompt, setPollPrompt] = useState("");
   const [pollOpts, setPollOpts] = useState("Sim, Não");
 
@@ -27,6 +28,12 @@ export function Professor({ api }: { api: Api }) {
   useEffect(() => {
     loadClasses();
   }, [loadClasses]);
+
+  // ao abrir a turma, retoma a última chamada (a tela não guarda sessão entre aberturas)
+  useEffect(() => {
+    if (!cls) return;
+    api.latestSession(cls.id).then((s) => s && setSession(s)).catch(() => {});
+  }, [api, cls?.id]);
 
   const refresh = useCallback(async () => {
     if (!session) return;
@@ -52,7 +59,7 @@ export function Professor({ api }: { api: Api }) {
     if (!cls) return;
     setBusy(true);
     try {
-      const created = await api.createSession(cls.id);
+      const created = await api.createSession(cls.id, windowMin * 60_000);
       const opened = await api.openSession(created.id);
       setSession(opened);
     } catch (e) {
@@ -66,7 +73,7 @@ export function Professor({ api }: { api: Api }) {
 
   if (!cls) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
         <H>Minhas turmas</H>
         {classes.map((k) => (
           <Card key={k.id}>
@@ -96,7 +103,7 @@ export function Professor({ api }: { api: Api }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12 }}>
       <View style={s.row}>
         <Button
           title="‹ Turmas"
@@ -124,6 +131,12 @@ export function Professor({ api }: { api: Api }) {
               <>
                 <H>{session ? "Chamada finalizada" : "Nenhuma chamada em andamento"}</H>
                 {session && <Mute>{present} presentes de {roster.length}.</Mute>}
+                <Mute>Duração da chamada (o Acadly usa ~2 min; use 10 min para testar com calma):</Mute>
+                <View style={s.row}>
+                  {[2, 5, 10].map((m) => (
+                    <Button key={m} title={`${m} min`} kind={windowMin === m ? "primary" : "ghost"} onPress={() => setWindowMin(m)} style={{ flex: 1, minHeight: 40 }} />
+                  ))}
+                </View>
                 <Button title={session ? "Iniciar nova chamada" : "Iniciar chamada"} onPress={startCall} busy={busy} />
               </>
             ) : (

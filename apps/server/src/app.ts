@@ -174,6 +174,17 @@ export async function buildApp(opts: AppOptions) {
     return publicSession(s);
   });
 
+  /** Última chamada da turma: o app do professor a retoma ao reabrir a turma. */
+  app.get("/classes/:id/sessions/latest", async (req, reply) => {
+    const u = await authed(req, reply, "PROFESSOR");
+    if (!u) return;
+    const { id } = req.params as { id: string };
+    const [c] = await db.select().from(classes).where(and(eq(classes.id, id), eq(classes.professorId, u.id)));
+    if (!c) return reply.code(404).send({ error: "class_not_found" });
+    const [s] = await db.select().from(sessions).where(eq(sessions.classId, c.id)).orderBy(desc(sessions.createdAt)).limit(1);
+    return s ? publicSession(await expireIfNeeded(s)) : null;
+  });
+
   app.post("/sessions/:id/open", async (req, reply) => {
     const u = await authed(req, reply, "PROFESSOR");
     if (!u) return;

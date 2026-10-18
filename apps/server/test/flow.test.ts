@@ -92,6 +92,12 @@ describe("fluxo completo", () => {
     expect((await call("POST", `/sessions/${sid}/close`, prof)).status).toBe(409);
   });
 
+  it("professor retoma a última chamada da turma", async () => {
+    const latest = (await call("GET", `/classes/${classId}/sessions/latest`, prof)).body;
+    expect(latest).toMatchObject({ classId });
+    expect((await call("GET", `/classes/${classId}/sessions/latest`, alu)).status).toBe(401);
+  });
+
   it("enquete: voto único por aluno, trocar voto atualiza", async () => {
     const s3 = (await call("POST", `/classes/${classId}/sessions`, prof, {})).body.id;
     await call("POST", `/sessions/${s3}/open`, prof);

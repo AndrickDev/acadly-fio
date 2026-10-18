@@ -105,6 +105,7 @@ export function makeApi(baseUrl: string, token: string | null) {
     joinClass: (code: string) => req<ClassItem>("POST", "/classes/join", { code }),
     openSessions: () => req<OpenSession[]>("GET", "/me/open-sessions"),
     createSession: (classId: string, windowMs = 120_000) => req<SessionInfo>("POST", `/classes/${classId}/sessions`, { windowMs }),
+    latestSession: (classId: string) => req<SessionInfo | null>("GET", `/classes/${classId}/sessions/latest`),
     openSession: (id: string) => req<SessionInfo>("POST", `/sessions/${id}/open`, {}),
     closeSession: (id: string) => req<SessionInfo>("POST", `/sessions/${id}/close`, {}),
     session: (id: string) => req<SessionInfo>("GET", `/sessions/${id}`),

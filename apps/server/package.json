@@ -1,0 +1,28 @@
+{
+  "name": "@acadly-fio/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "simulate": "tsx ../../tests/simulate_attendance.ts"
+  },
+  "dependencies": {
+    "@acadly-fio/core": "*",
+    "@electric-sql/pglite": "^0.2.15",
+    "@fastify/cors": "^10.0.1",
+    "drizzle-orm": "^0.36.0",
+    "fastify": "^5.1.0",
+    "pg": "^8.13.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

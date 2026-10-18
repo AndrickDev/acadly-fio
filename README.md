@@ -1,54 +1,113 @@
-# acadly-fio
+# Chamada Fio
 
-App de celular (Expo / React Native) para **chamada por proximidade sem GPS** e engajamento em sala, inspirado no fluxo público do Acadly.
-Engenharia reversa de **caixa limpa**: só fontes públicas, citadas em [`EVIDENCE.md`](EVIDENCE.md).
+Aplicativo Android de **chamada por proximidade, sem GPS**, para o Centro Universitário de Ourinhos (Unifio).
+O professor abre a chamada; o aluno toca em **Marcar presença**; o sistema confere se ele está mesmo na sala e registra.
+
+> **Estado: protótipo funcional.** O fluxo completo (professor, aluno, regras antifraude, banco de dados) funciona e é testado.
+> A **detecção por Bluetooth ainda é simulada**; o Bluetooth real é o próximo passo ([ROADMAP](ROADMAP.md), [plano do Bluetooth](docs/bluetooth.md)).
+
+<p>
+  <img src="docs/screenshots/login.png" width="190" alt="Login">
+  <img src="docs/screenshots/professor-chamada.png" width="190" alt="Professor com a chamada aberta">
+  <img src="docs/screenshots/aluno-chamada.png" width="190" alt="Aluno com a chamada aberta">
+  <img src="docs/screenshots/aluno-presenca.png" width="190" alt="Aluno com presença registrada">
+</p>
+
+## Como funciona
+
+1. O professor cria a turma e passa o código aos alunos.
+2. O professor toca em **Iniciar chamada** e escolhe a duração (2, 5 ou 10 min).
+3. O aluno vê a chamada aberta e toca em **Marcar presença**.
+4. O servidor aplica as regras abaixo e responde na hora, dizendo **qual regra decidiu**.
+5. O professor acompanha a presença ao vivo, corrige à mão quando precisar e vê os alertas de fraude.
+
+### Regras de validação (R1 a R10)
+
+Executadas em ordem; a primeira que falha decide. Cada regra está rotulada em [`EVIDENCE.md`](EVIDENCE.md) como observada no Acadly, inferida ou decisão da Fio.
+
+| Regra | O que confere |
+|---|---|
+| R1 | A sessão existe |
+| R2 | A chamada está aberta e dentro da janela de tempo |
+| R3 | O aluno está matriculado na turma |
+| R4 | No máximo 5 tentativas por aparelho a cada 10 s |
+| R5 | Um check-in por aluno |
+| R6 | Um aparelho não registra dois alunos |
+| R7 | O código de proximidade (muda a cada 5 s) é válido |
+| R8 | No máximo 3 saltos até o professor |
+| R9 | Quem chegou por salto tem uma testemunha já presente |
+| R10 | Aceito |
+
+## O que existe hoje
+
+| | Estado |
+|---|---|
+| Regras, máquina de estados da chamada, validador | Pronto, com 17 testes |
+| API (Fastify) + PostgreSQL | Pronto, com 9 testes de integração |
+| App Android: professor, aluno, painel de Evidências, enquete, presença manual | Pronto, com identidade visual da Unifio |
+| Simulação com 175 alunos concorrentes | Pronta: 100% de acerto, 0 fraude aceita |
+| Detecção por **Bluetooth real** | **Não existe ainda** (simulada) |
+| Integração com Moodle e Portal | Não existe ainda |
+| Modo Prova | Não existe ainda |
+
+## Estrutura
 
 ```
-packages/core    regras R1–R10, máquina de estados, validador (TS puro, testado)
+packages/core    regras R1–R10, máquina de estados, validador (TypeScript puro)
 apps/server      Fastify + Drizzle + PostgreSQL (PGlite em dev, Postgres em produção)
-apps/mobile      Expo SDK 58 — telas de Professor, Aluno e Painel de Evidências
-tests/           simulate_attendance.ts → relatório de acurácia (report.md / report.json)
+apps/mobile      Expo (React Native), Android
+tests/           simulate_attendance.ts → relatório de acurácia
+docs/            plano do Bluetooth e capturas de tela
 ```
 
-## Rodar
+## Rodar no emulador Android
 
-```bash
+```powershell
 npm install
 
-# 1) servidor (porta 3333). SIM_BEACON=1 só em dev: simula o Bluetooth.
-SIM_BEACON=1 npm run server
+# 1) servidor na porta 3333. SIM_BEACON=1 só em desenvolvimento: simula o Bluetooth.
+$env:SIM_BEACON=1; npm run server
 
-# 2) app — abra no Expo Go; na tela de login, informe http://<IP-do-PC>:3333
+# 2) app: abre no Expo Go do emulador. O endereço do servidor no emulador é http://10.0.2.2:3333
 npm run mobile
 ```
 
-Celular e PC na mesma rede Wi-Fi. No PowerShell: `$env:SIM_BEACON=1; npm run server`.
-
-Fluxo: professor cria turma → aluno entra com o código → professor toca **Iniciar chamada** (janela de 120 s) → aluno toca **Marcar presença** → o professor vê presença, alertas e, na aba **Evidências**, qual regra decidiu cada tentativa.
+No emulador, `10.0.2.2` é o computador. Em um celular real use o IP do computador na mesma rede Wi-Fi.
+Para testar os dois papéis num aparelho só: **Conta → Sair da conta** e entre com o outro perfil.
 
 ## Testes
 
 ```bash
-npm test            # 17 unitários (regras) + 8 de integração (API + banco)
-npm run simulate    # 175 alunos concorrentes; gera tests/report.md e report.json
+npm test            # 17 testes das regras + 9 de integração (API e banco)
+npm run simulate    # 175 alunos concorrentes; gera tests/report.md e tests/report.json
 ```
 
-## Persistência
+## Banco de dados
 
 PostgreSQL em todos os ambientes, com o mesmo schema (`apps/server/src/db`).
 
-| Ambiente | Config |
+| Ambiente | Configuração |
 |---|---|
-| Dev / testes | sem nada: PGlite (Postgres embutido) em `.data/pg`, ou em memória nos testes |
-| Produção | `DATABASE_URL=postgres://...` (Neon, Supabase, RDS, Railway…) |
+| Desenvolvimento e testes | nada: PGlite (Postgres embutido) em `.data/pg`, ou em memória nos testes |
+| Produção | `DATABASE_URL=postgres://...` |
 
-Migrações em SQL puro, aplicadas no boot com lock consultivo. Check-ins são serializados por sessão (`pg_advisory_xact_lock`), e `UNIQUE(session, aluno)` e `UNIQUE(session, device)` são a segunda barreira contra duplicata.
+Check-ins da mesma chamada são serializados (`pg_advisory_xact_lock`) e há `UNIQUE(sessão, aluno)` e `UNIQUE(sessão, aparelho)` como segunda barreira contra duplicata.
 
-## Limites conhecidos (leia antes de usar em aula real)
+## Limites conhecidos
 
-1. **Bluetooth real não está implementado.** O app usa `SimulatedProvider`, que busca o token no servidor e **não prova presença física**. O contrato do mesh (token HMAC rotativo de 5 s, `hops`, testemunhas) já está no servidor. Falta o `BleProvider` com `react-native-ble-plx`, que exige *development build* e não roda no Expo Go. Em produção, deixe `SIM_BEACON` desligado.
-2. **`deviceId` é um id de instalação**, não serial de hardware: iOS e Android não expõem esse dado. Para amarrar ao aparelho de verdade, use Play Integrity e App Attest.
-3. **O algoritmo antifraude é nosso.** O Acadly não publica o dele. O que é `OBSERVADO`, `INFERIDO` ou `PROJETO` está rotulado em `EVIDENCE.md`. As lacunas que o próprio Acadly admite (ficar na porta, emprestar o celular) continuam existindo aqui.
-4. **Login sem senha** (MVP): token HMAC por usuário. Troque por OIDC antes de produção.
-5. O app atualiza por *polling* (2–3 s). O servidor também expõe SSE em `/sessions/:id/stream` para clientes web.
-6. A simulação rodou em PGlite (conexão única). A concorrência em Postgres de verdade ainda precisa ser exercitada em um ambiente com `DATABASE_URL`.
+1. **Bluetooth simulado.** O app busca o código no servidor, o que **não prova presença física**. Em produção `SIM_BEACON` fica desligado.
+2. **Sala ao lado e corredor** não são resolvidos hoje. A meta é ser melhor que a ATA em papel, não perfeito: ver [`docs/bluetooth.md`](docs/bluetooth.md).
+3. **Login por nome, sem senha** (só para o protótipo). O destino é entrar com o RA e a senha do Moodle.
+4. O `deviceId` é um identificador de instalação, não o serial do aparelho (Android e iOS não expõem esse dado).
+5. A concorrência foi exercitada em PGlite; falta rodar a simulação contra um Postgres de verdade.
+6. Só Android. iOS está fora do escopo por enquanto.
+
+## Documentação
+
+- [`ROADMAP.md`](ROADMAP.md): o que está pronto, o que vem e em que ordem.
+- [`docs/bluetooth.md`](docs/bluetooth.md): como o Bluetooth vai funcionar e como testar com dois aparelhos.
+- [`EVIDENCE.md`](EVIDENCE.md): o que o Acadly faz (só fontes públicas), regras e decisões da Fio.
+
+## Identidade visual
+
+Azul `#004998` e laranja `#ED8A25`, extraídos do logotipo oficial. Azul é ação e estrutura; laranja é atenção e progresso. Tipografia Outfit. As cores ficam em `apps/mobile/src/theme.ts`.

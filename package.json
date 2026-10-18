@@ -1,0 +1,12 @@
+{
+  "name": "acadly-fio",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "test": "npm run test -w @acadly-fio/core && npm run test -w @acadly-fio/server",
+    "simulate": "npm run simulate -w @acadly-fio/server",
+    "server": "npm run dev -w @acadly-fio/server",
+    "mobile": "npm run start -w @acadly-fio/mobile"
+  }
+}

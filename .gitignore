@@ -5,3 +5,5 @@ dist/
 .env
 .data/
 tests/report.*
+.server.log
+.expo.log

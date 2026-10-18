@@ -8,7 +8,7 @@ import { Professor } from "./src/screens/Professor";
 import { load, save } from "./src/storage";
 import { Button, Card, H, Mute, c, s } from "./src/ui";
 
-const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.0.10:3333";
+const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3333";
 
 export default function App() {
   const [ready, setReady] = useState(false);

@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, View } from "react-native";
 import type { Role } from "../api";
 import { Button, Field, Hero, Segmented, T, colors } from "../ui";
 
-export function Login({ baseUrl, setBaseUrl, busy, onLogin }: { baseUrl: string; setBaseUrl: (u: string) => void; busy: boolean; onLogin: (name: string, role: Role) => void }) {
+export function Login({ baseUrl, setBaseUrl, busy, onLogin, onLab }: { baseUrl: string; setBaseUrl: (u: string) => void; busy: boolean; onLogin: (name: string, role: Role) => void; onLab: () => void }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("ALUNO");
   const [showServer, setShowServer] = useState(false);
@@ -38,8 +38,13 @@ export function Login({ baseUrl, setBaseUrl, busy, onLogin }: { baseUrl: string;
         <Button title="Entrar" onPress={go} busy={busy} disabled={!ok} />
 
         <Pressable accessibilityRole="button" onPress={() => setShowServer((v) => !v)} hitSlop={8} style={{ alignSelf: "flex-start" }}>
-          <T v="small" c={colors.azul} style={{ textDecorationLine: "underline" }}>
+          <T v="small" c={colors.azulTexto} style={{ textDecorationLine: "underline" }}>
             {showServer ? "Ocultar servidor" : "Configurar servidor"}
+          </T>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={onLab} hitSlop={8} style={{ alignSelf: "flex-start" }}>
+          <T v="small" c={colors.azulTexto} style={{ textDecorationLine: "underline" }}>
+            Laboratório Bluetooth (teste)
           </T>
         </Pressable>
         {showServer && <Field placeholder="Endereço do servidor" autoCapitalize="none" autoCorrect={false} value={baseUrl} onChangeText={setBaseUrl} />}

@@ -1,16 +1,18 @@
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, Outfit_800ExtraBold, useFonts } from "@expo-google-fonts/outfit";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, View, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { makeApi, type Role, type User } from "./src/api";
 import { simulatedProvider } from "./src/proximity";
 import { Aluno } from "./src/screens/Aluno";
 import { Conta } from "./src/screens/Conta";
+import { Laboratorio } from "./src/screens/Laboratorio";
 import { Login } from "./src/screens/Login";
 import { Professor } from "./src/screens/Professor";
 import { load, save } from "./src/storage";
-import { TabBar, colors } from "./src/ui";
+import { applyTheme, colors, type ThemeName, type ThemePref } from "./src/theme";
+import { TabBar } from "./src/ui";
 
 const DEFAULT_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3333";
 
@@ -22,10 +24,21 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"inicio" | "conta">("inicio");
+  const [lab, setLab] = useState(false);
+  const [themePref, setThemePref] = useState<ThemePref>("escuro");
+  const system = useColorScheme();
+  const theme: ThemeName = themePref === "sistema" ? (system === "light" ? "claro" : "escuro") : themePref;
+  applyTheme(theme); // idempotente; a árvore remonta (key) quando o tema muda
+
+  const chooseTheme = (t: ThemePref) => {
+    setThemePref(t);
+    save("theme", t);
+  };
 
   useEffect(() => {
     (async () => {
-      const [u, t, url] = await Promise.all([load("user"), load("token"), load("baseUrl")]);
+      const [u, t, url, th] = await Promise.all([load("user"), load("token"), load("baseUrl"), load("theme")]);
+      if (th === "claro" || th === "escuro" || th === "sistema") setThemePref(th);
       if (url) setBaseUrl(url);
       if (u && t) {
         setUser(JSON.parse(u));
@@ -62,14 +75,16 @@ export default function App() {
     setToken(null);
   };
 
-  if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: colors.azul }} />;
+  if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: colors.hero }} />;
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <View style={{ flex: 1, backgroundColor: colors.fundo }}>
-        {!user ? (
-          <Login baseUrl={baseUrl} setBaseUrl={setBaseUrl} busy={busy} onLogin={login} />
+      <View key={theme} style={{ flex: 1, backgroundColor: colors.fundo }}>
+        {lab ? (
+          <Laboratorio onBack={() => setLab(false)} />
+        ) : !user ? (
+          <Login baseUrl={baseUrl} setBaseUrl={setBaseUrl} busy={busy} onLogin={login} onLab={() => setLab(true)} />
         ) : (
           <>
             {/* as duas abas ficam montadas para não perder turma e chamada ao trocar de aba */}
@@ -77,7 +92,7 @@ export default function App() {
               {user.role === "PROFESSOR" ? <Professor api={api} userName={user.name} /> : <Aluno api={api} provider={provider} userName={user.name} />}
             </View>
             <View style={{ flex: 1, display: tab === "conta" ? "flex" : "none" }}>
-              <Conta user={user} baseUrl={baseUrl} onLogout={logout} />
+              <Conta user={user} baseUrl={baseUrl} themePref={themePref} onTheme={chooseTheme} onLab={() => setLab(true)} onLogout={logout} />
             </View>
             <TabBar
               active={tab}

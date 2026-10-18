@@ -1,17 +1,18 @@
 {
   "expo": {
-    "name": "Acadly Fio",
+    "name": "Chamada Fio",
     "slug": "acadly-fio",
-    "version": "1.0.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "br.edu.unifio.chamadafio",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#004998",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -23,7 +24,26 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "munim-bluetooth",
+        {
+          "androidBluetoothPermissions": [
+            "scan",
+            "connect",
+            "advertise"
+          ],
+          "bluetoothBackground": false
+        }
+      ]
     ]
   }
 }

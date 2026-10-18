@@ -7,3 +7,5 @@ dist/
 tests/report.*
 .server.log
 .expo.log
+apps/mobile/android/
+apps/mobile/ios/

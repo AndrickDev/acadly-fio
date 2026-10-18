@@ -33,16 +33,18 @@ export function T({ v = "body", c = colors.tinta, style, ...rest }: TextProps & 
 
 /* ---------- botões ---------- */
 type Kind = "primary" | "secondary" | "danger" | "ghost" | "onDark";
-const KIND: Record<Kind, { bg: string; fg: string }> = {
-  primary: { bg: colors.azul, fg: colors.branco },
-  secondary: { bg: colors.azulClaro, fg: colors.azul },
-  danger: { bg: colors.vermelhoClaro, fg: colors.vermelho },
-  ghost: { bg: "transparent", fg: colors.azul },
-  onDark: { bg: colors.branco, fg: colors.azul },
-};
+const kindStyle = (k: Kind): { bg: string; fg: string } =>
+  ({
+    primary: { bg: colors.azul, fg: colors.branco },
+    secondary: { bg: colors.azulClaro, fg: colors.azulTexto },
+    danger: { bg: colors.vermelhoClaro, fg: colors.vermelho },
+    ghost: { bg: "transparent", fg: colors.azulTexto },
+    onDark: { bg: colors.branco, fg: colors.marca },
+  })[k];
 
 export function Button({ title, onPress, kind = "primary", icon, busy, disabled, small, style }: { title: string; onPress: () => void; kind?: Kind; icon?: keyof typeof Ionicons.glyphMap; busy?: boolean; disabled?: boolean; small?: boolean; style?: ViewStyle }) {
-  const k = KIND[kind];
+  const k = kindStyle(kind);
+  const s = S();
   return (
     <Pressable
       accessibilityRole="button"
@@ -67,6 +69,7 @@ export function Button({ title, onPress, kind = "primary", icon, busy, disabled,
 }
 
 export function IconButton({ icon, onPress, label, color = colors.branco }: { icon: keyof typeof Ionicons.glyphMap; onPress: () => void; label: string; color?: string }) {
+  const s = S();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={10} style={s.iconBtn}>
       <Ionicons name={icon} size={24} color={color} />
@@ -76,21 +79,24 @@ export function IconButton({ icon, onPress, label, color = colors.branco }: { ic
 
 /* ---------- campos ---------- */
 export function Field(props: TextInputProps) {
+  const s = S();
   return <TextInput placeholderTextColor={colors.mudo} {...props} style={[s.input, props.style]} />;
 }
 
 /* ---------- peças pequenas ---------- */
 type Tone = "ok" | "warn" | "bad" | "info" | "mute";
-const TONE: Record<Tone, { bg: string; fg: string }> = {
-  ok: { bg: colors.verdeClaro, fg: colors.verde },
-  warn: { bg: colors.laranjaClaro, fg: colors.laranjaTexto },
-  bad: { bg: colors.vermelhoClaro, fg: colors.vermelho },
-  info: { bg: colors.azulClaro, fg: colors.azul },
-  mute: { bg: "#E9EEF4", fg: colors.mudo },
-};
+const toneStyle = (t: Tone): { bg: string; fg: string } =>
+  ({
+    ok: { bg: colors.verdeClaro, fg: colors.verde },
+    warn: { bg: colors.laranjaClaro, fg: colors.laranjaTexto },
+    bad: { bg: colors.vermelhoClaro, fg: colors.vermelho },
+    info: { bg: colors.azulClaro, fg: colors.azulTexto },
+    mute: { bg: colors.chipMudo, fg: colors.mudo },
+  })[t];
 
 export function Chip({ text, tone = "info" }: { text: string; tone?: Tone }) {
-  const t = TONE[tone];
+  const t = toneStyle(tone);
+  const s = S();
   return (
     <View style={[s.chip, { backgroundColor: t.bg }]}>
       <T v="small" c={t.fg} style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 17 }}>
@@ -109,7 +115,7 @@ export function Avatar({ name, size = 42 }: { name: string; size?: number }) {
     .join("");
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.azulClaro, alignItems: "center", justifyContent: "center" }}>
-      <T v="heading" c={colors.azul} style={{ fontSize: size * 0.4, lineHeight: size * 0.5 }}>
+      <T v="heading" c={colors.azulTexto} style={{ fontSize: size * 0.4, lineHeight: size * 0.5 }}>
         {ini || "?"}
       </T>
     </View>
@@ -117,13 +123,14 @@ export function Avatar({ name, size = 42 }: { name: string; size?: number }) {
 }
 
 export function Segmented<K extends string>({ options, value, onChange }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void }) {
+  const s = S();
   return (
     <View style={s.segment}>
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable key={o.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => onChange(o.key)} style={[s.segmentItem, on && { backgroundColor: colors.branco }]}>
-            <T v="button" c={on ? colors.azul : colors.mudo} style={{ fontSize: 15 }}>
+          <Pressable key={o.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => onChange(o.key)} style={[s.segmentItem, on && { backgroundColor: colors.ativo }]}>
+            <T v="button" c={on ? colors.ativoTexto : colors.mudo} style={{ fontSize: 15 }}>
               {o.label}
             </T>
           </Pressable>
@@ -149,7 +156,7 @@ export function SlantBar({ ratio, onDark = false, segments = 20 }: { ratio: numb
 export function Hero({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ backgroundColor: colors.azul, paddingTop: insets.top + 14, paddingHorizontal: 20, paddingBottom: 44, overflow: "hidden", gap: 10 }}>
+    <View style={{ backgroundColor: colors.hero, paddingTop: insets.top + 14, paddingHorizontal: 20, paddingBottom: 44, overflow: "hidden", gap: 10 }}>
       {children}
       <View pointerEvents="none" style={{ position: "absolute", left: -30, right: -30, bottom: -20, height: 40, backgroundColor: colors.fundo, transform: [{ skewY: "-2.5deg" }] }} />
     </View>
@@ -157,6 +164,7 @@ export function Hero({ children }: { children: ReactNode }) {
 }
 
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
+  const s = S();
   return (
     <View style={[s.row, { justifyContent: "space-between", paddingTop: 8 }]}>
       <T v="heading">{children}</T>
@@ -167,6 +175,7 @@ export function SectionTitle({ children, right }: { children: ReactNode; right?:
 
 /** Linha de lista: separada por divisor, sem caixa própria. */
 export function Row({ children, last }: { children: ReactNode; last?: boolean }) {
+  const s = S();
   return <View style={[s.listRow, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.linha }]}>{children}</View>;
 }
 
@@ -184,6 +193,7 @@ export function Empty({ title, text }: { title: string; text: string }) {
 export type TabKey = string;
 export function TabBar<K extends TabKey>({ tabs, active, onChange }: { tabs: { key: K; label: string; icon: keyof typeof Ionicons.glyphMap; iconOn: keyof typeof Ionicons.glyphMap }[]; active: K; onChange: (k: K) => void }) {
   const insets = useSafeAreaInsets();
+  const s = S();
   return (
     <View style={[s.tabbar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {tabs.map((t) => {
@@ -191,8 +201,8 @@ export function TabBar<K extends TabKey>({ tabs, active, onChange }: { tabs: { k
         return (
           <Pressable key={t.key} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={t.label} onPress={() => onChange(t.key)} style={s.tab}>
             {on && <View style={s.tabMark} />}
-            <Ionicons name={on ? t.iconOn : t.icon} size={24} color={on ? colors.azul : colors.mudo} />
-            <T v="small" c={on ? colors.azul : colors.mudo} style={{ fontFamily: on ? font.semi : font.reg, fontSize: 13 }}>
+            <Ionicons name={on ? t.iconOn : t.icon} size={24} color={on ? colors.azulTexto : colors.mudo} />
+            <T v="small" c={on ? colors.azulTexto : colors.mudo} style={{ fontFamily: on ? font.semi : font.reg, fontSize: 13 }}>
               {t.label}
             </T>
           </Pressable>
@@ -212,16 +222,25 @@ export const presentLine = (present: number, total: number) => `${present} de ${
 
 export const firstName =(n: string) => n.trim().split(/\s+/)[0] ?? n;
 
-export const s = StyleSheet.create({
+const build = () => StyleSheet.create({
   btn: { borderRadius: radius.m, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  input: { borderWidth: 1.5, borderColor: colors.linha, backgroundColor: colors.branco, borderRadius: radius.m, paddingHorizontal: 16, minHeight: 52, fontSize: 16, fontFamily: font.reg, color: colors.tinta },
+  input: { borderWidth: 1.5, borderColor: colors.linha, backgroundColor: colors.superficie, borderRadius: radius.m, paddingHorizontal: 16, minHeight: 52, fontSize: 16, fontFamily: font.reg, color: colors.tinta },
   chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full, alignSelf: "flex-start" },
   segment: { flexDirection: "row", backgroundColor: colors.azulClaro, borderRadius: radius.m, padding: 4, gap: 4 },
   segmentItem: { flex: 1, minHeight: 40, borderRadius: radius.m - 4, alignItems: "center", justifyContent: "center" },
   listRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
-  tabbar: { flexDirection: "row", backgroundColor: colors.branco, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.linha, paddingTop: 6 },
+  tabbar: { flexDirection: "row", backgroundColor: colors.superficie, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.linha, paddingTop: 6 },
   tab: { flex: 1, alignItems: "center", gap: 2, paddingTop: 6, minHeight: 52 },
   tabMark: { position: "absolute", top: -6, width: 30, height: 4, borderRadius: 2, backgroundColor: colors.laranja, transform: [{ skewX: "-20deg" }] },
 });
+
+const cache = new Map<string, ReturnType<typeof build>>();
+/** Estilos do tema atual (cache por tema, pois `colors` muda quando o tema troca). */
+const S = () => {
+  const key = colors.fundo;
+  let v = cache.get(key);
+  if (!v) cache.set(key, (v = build()));
+  return v;
+};

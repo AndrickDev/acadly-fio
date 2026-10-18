@@ -1,8 +1,9 @@
 import { ScrollView, View } from "react-native";
 import type { User } from "../api";
-import { Avatar, Button, Chip, Hero, Row, T, colors } from "../ui";
+import type { ThemePref } from "../theme";
+import { Avatar, Button, Chip, Hero, Row, Segmented, SectionTitle, T, colors } from "../ui";
 
-export function Conta({ user, baseUrl, onLogout }: { user: User; baseUrl: string; onLogout: () => void }) {
+export function Conta({ user, baseUrl, themePref, onTheme, onLab, onLogout }: { user: User; baseUrl: string; themePref: ThemePref; onTheme: (t: ThemePref) => void; onLab: () => void; onLogout: () => void }) {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
       <Hero>
@@ -14,24 +15,39 @@ export function Conta({ user, baseUrl, onLogout }: { user: User; baseUrl: string
           {user.role === "PROFESSOR" ? "Professor" : "Aluno"}
         </T>
       </Hero>
-      <View style={{ paddingHorizontal: 20, gap: 4 }}>
-        <Row>
-          <View style={{ flex: 1, gap: 2 }}>
-            <T v="small" c={colors.mudo}>
-              Servidor
-            </T>
-            <T v="body">{baseUrl}</T>
-          </View>
-        </Row>
-        <Row last>
-          <View style={{ flex: 1, gap: 4 }}>
-            <T v="small" c={colors.mudo}>
-              Versão
-            </T>
-            <Chip text="Protótipo, detecção simulada" tone="warn" />
-          </View>
-        </Row>
-        <View style={{ paddingTop: 24 }}>
+      <View style={{ paddingHorizontal: 20, gap: 8 }}>
+        <SectionTitle>Aparência</SectionTitle>
+        <Segmented
+          value={themePref}
+          onChange={onTheme}
+          options={[
+            { key: "escuro", label: "Escuro" },
+            { key: "claro", label: "Claro" },
+            { key: "sistema", label: "Sistema" },
+          ]}
+        />
+
+        <View style={{ paddingTop: 12 }}>
+          <Row>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="small" c={colors.mudo}>
+                Servidor
+              </T>
+              <T v="body">{baseUrl}</T>
+            </View>
+          </Row>
+          <Row last>
+            <View style={{ flex: 1, gap: 4 }}>
+              <T v="small" c={colors.mudo}>
+                Versão
+              </T>
+              <Chip text="Protótipo, detecção simulada" tone="warn" />
+            </View>
+          </Row>
+        </View>
+
+        <View style={{ paddingTop: 16, gap: 12 }}>
+          <Button title="Laboratório Bluetooth" kind="secondary" icon="bluetooth-outline" onPress={onLab} />
           <Button title="Sair da conta" kind="danger" icon="log-out-outline" onPress={onLogout} />
         </View>
       </View>

@@ -46,7 +46,7 @@ export function EvidenceBoard({ api, attempts, names }: { api: Api; attempts: At
         return (
           <Row key={r.id} last={i === rules.length - 1}>
             <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: hot ? colors.azul : colors.azulClaro }}>
-              <T v="small" c={hot ? colors.branco : colors.azul} style={{ fontFamily: "Outfit_700Bold" }}>
+              <T v="small" c={hot ? colors.branco : colors.azulTexto} style={{ fontFamily: "Outfit_700Bold" }}>
                 {r.id}
               </T>
             </View>

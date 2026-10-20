@@ -30,7 +30,7 @@ Quase tudo abaixo vem da página de cada produto ou de comparativos de fornecedo
 - [x] Banco PostgreSQL, API com testes, simulação de 175 alunos (100% de acerto)
 - [x] Tema escuro e claro, identidade da Unifio, ícone do app
 - [~] Login: existe a tela e a sessão **fica salva** no aparelho (armazenamento seguro), mas é só por nome, sem senha
-- [~] Bluetooth: o servidor valida; o aparelho ainda usa detecção **simulada**. O Laboratório de medição está pronto para testar
+- [~] Bluetooth: o servidor valida; o aparelho usa Bluetooth real (implementado em 2026-10-20, **sem teste em aparelho**); no emulador a detecção é simulada. O Laboratório de medição está pronto
 
 ## 3. Aluno
 

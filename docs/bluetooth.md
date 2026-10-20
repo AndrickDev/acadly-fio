@@ -1,6 +1,6 @@
 # Bluetooth: plano e testes
 
-Hoje a detecção é **simulada**: o app busca o código no servidor, o que não prova presença física. Este documento descreve a versão real e como testá-la com dois celulares Android.
+No emulador e no Expo Go a detecção é **simulada** (o app busca o código no servidor, o que não prova presença física). Em aparelho com o APK, o Bluetooth real está implementado e **ainda sem teste**. Este documento descreve a versão real e como testá-la com dois celulares Android.
 
 Legenda: **[confirmado]** vem da documentação pública; **[a validar]** só se sabe testando no aparelho.
 

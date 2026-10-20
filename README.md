@@ -4,7 +4,7 @@ Aplicativo Android de **chamada por proximidade, sem GPS**, para o Centro Univer
 O professor abre a chamada; o aluno toca em **Marcar presença**; o sistema confere se ele está mesmo na sala e registra.
 
 > **Estado: protótipo funcional.** O fluxo completo (professor, aluno, regras antifraude, banco de dados) funciona e é testado.
-> A **detecção por Bluetooth ainda é simulada**; o Bluetooth real é o próximo passo ([ROADMAP](ROADMAP.md), [plano do Bluetooth](docs/bluetooth.md)).
+> O **Bluetooth real está implementado, mas ainda não foi testado em aparelho**; no emulador e no Expo Go a detecção continua simulada. Próximo passo: medir em sala ([ROADMAP](ROADMAP.md), [plano do Bluetooth](docs/bluetooth.md)).
 
 <p>
   <img src="docs/screenshots/login.png" width="190" alt="Login">
@@ -46,7 +46,7 @@ Executadas em ordem; a primeira que falha decide. Cada regra está rotulada em [
 | API (Fastify) + PostgreSQL | Pronto, com 14 testes de integração |
 | App Android: professor, aluno, painel de Evidências, enquete, presença manual | Pronto, com identidade visual da Unifio |
 | Simulação com 175 alunos concorrentes | Pronta: 100% de acerto, 0 fraude aceita |
-| Detecção por **Bluetooth real** | **Não existe ainda** (simulada) |
+| Detecção por **Bluetooth real** | **Implementado, sem teste em aparelho** (simulado no emulador) |
 | Integração com Moodle e Portal | Não existe ainda |
 | Modo Prova | Não existe ainda |
 
@@ -95,7 +95,7 @@ Check-ins da mesma chamada são serializados (`pg_advisory_xact_lock`) e há `UN
 
 ## Limites conhecidos
 
-1. **Bluetooth simulado.** O app busca o código no servidor, o que **não prova presença física**. Em produção `SIM_BEACON` fica desligado.
+1. **Bluetooth ainda sem prova em aparelho.** No emulador/Expo Go o app busca o código no servidor (**não prova presença física**); em produção `SIM_BEACON` fica desligado.
 2. **Sala ao lado e corredor** não são resolvidos hoje. A meta é ser melhor que a ATA em papel, não perfeito: ver [`docs/bluetooth.md`](docs/bluetooth.md).
 3. **Login por nome, sem senha** (só para o protótipo). O destino é entrar com o RA e a senha do Moodle.
 4. O `deviceId` é um identificador de instalação, não o serial do aparelho (Android e iOS não expõem esse dado).

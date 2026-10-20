@@ -165,11 +165,11 @@ export async function buildApp(opts: AppOptions) {
     const { id } = req.params as { id: string };
     const [c] = await db.select().from(classes).where(and(eq(classes.id, id), eq(classes.professorId, u.id)));
     if (!c) return reply.code(404).send({ error: "class_not_found" });
-    const body = z.object({ windowMs: z.number().int().min(10_000).max(600_000).default(120_000) }).safeParse(req.body ?? {});
+    const body = z.object({ windowMs: z.number().int().min(10_000).max(600_000).default(120_000), mode: z.enum(["DIRETO", "REPASSE"]).default("DIRETO") }).safeParse(req.body ?? {});
     if (!body.success) return reply.code(400).send({ error: "invalid_body" });
     const [s] = await db
       .insert(sessions)
-      .values({ id: randomUUID(), classId: c.id, state: "CRIADA", windowMs: body.data.windowMs, secret: randomBytes(24).toString("hex"), createdAt: clock() })
+      .values({ id: randomUUID(), classId: c.id, state: "CRIADA", windowMs: body.data.windowMs, secret: randomBytes(24).toString("hex"), mode: body.data.mode, createdAt: clock() })
       .returning();
     return publicSession(s);
   });
@@ -244,7 +244,7 @@ export async function buildApp(opts: AppOptions) {
     const s = await ownSession((req.params as { id: string }).id, u.id);
     if (!s) return reply.code(404).send({ error: "session_not_found" });
     const rows = await db
-      .select({ studentId: users.id, name: users.name, method: checkins.method, hops: checkins.hops, at: checkins.at })
+      .select({ studentId: users.id, name: users.name, method: checkins.method, hops: checkins.hops, rssi: checkins.rssi, review: checkins.review, at: checkins.at })
       .from(enrollments)
       .innerJoin(users, eq(users.id, enrollments.studentId))
       .leftJoin(checkins, and(eq(checkins.studentId, users.id), eq(checkins.sessionId, s.id)))
@@ -263,7 +263,7 @@ export async function buildApp(opts: AppOptions) {
     const [enr] = await db.select().from(enrollments).where(and(eq(enrollments.classId, s.classId), eq(enrollments.studentId, body.data.studentId)));
     if (!enr) return reply.code(404).send({ error: "not_enrolled" });
     if (body.data.present) {
-      await db.insert(checkins).values({ id: randomUUID(), sessionId: s.id, studentId: body.data.studentId, deviceId: null, hops: 0, witnesses: [], method: "MANUAL", at: clock() }).onConflictDoNothing();
+      await db.insert(checkins).values({ id: randomUUID(), sessionId: s.id, studentId: body.data.studentId, deviceId: null, hops: 0, witnesses: [], method: "MANUAL", at: clock() }).onConflictDoUpdate({ target: [checkins.sessionId, checkins.studentId], set: { review: false } }); // confirma uma revisão
     } else {
       await db.delete(checkins).where(and(eq(checkins.sessionId, s.id), eq(checkins.studentId, body.data.studentId)));
     }
@@ -290,12 +290,14 @@ export async function buildApp(opts: AppOptions) {
     const body = z
       .object({
         deviceId: z.string().min(8).max(128),
-        token: z.string().min(1).max(128),
+        token: z.string().min(1).max(128).optional(),
+        /** tokens ouvidos por Bluetooth com a força do sinal; o servidor escolhe o da própria sala */
+        readings: z.array(z.object({ token: z.string().min(1).max(128), rssi: z.number().int().min(-127).max(0) })).max(16).default([]),
         hops: z.number().int().min(0).max(10).default(0),
         witnesses: z.array(z.string().max(64)).max(20).default([]),
       })
       .safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: "invalid_body" });
+    if (!body.success || (!body.data.token && body.data.readings.length === 0)) return reply.code(400).send({ error: "invalid_body" });
     const sessionId = (req.params as { id: string }).id;
     const now = clock();
 
@@ -309,13 +311,19 @@ export async function buildApp(opts: AppOptions) {
       }
       const [enr] = s ? await tx.select().from(enrollments).where(and(eq(enrollments.classId, s.classId), eq(enrollments.studentId, u.id))) : [];
       const present = s ? await tx.select({ studentId: checkins.studentId, deviceId: checkins.deviceId }).from(checkins).where(eq(checkins.sessionId, s.id)) : [];
+      // com leituras, vale a que bate com o segredo desta sessão (a de outra sala não conta); sem nenhuma, usa a mais forte
+      const heard = [...body.data.readings].sort((x, y) => y.rssi - x.rssi);
+      const own = s ? heard.find((r) => verifyBeacon(s.secret, sessionId, r.token, now) !== "invalid") : undefined;
+      const picked = own ?? heard[0];
+      const token = picked?.token ?? body.data.token ?? "";
+      const rssi = picked?.rssi ?? null;
       const [{ n }] = await tx
         .select({ n: count() })
         .from(attempts)
         .where(and(eq(attempts.sessionId, sessionId), eq(attempts.deviceId, body.data.deviceId), gt(attempts.at, now - RATE_WINDOW_MS)));
 
       const d: Decision = validateCheckIn(
-        { sessionId, studentId: u.id, deviceId: body.data.deviceId, token: body.data.token, hops: body.data.hops, witnesses: body.data.witnesses, now },
+        { sessionId, studentId: u.id, deviceId: body.data.deviceId, token, hops: body.data.hops, witnesses: body.data.witnesses, rssi, now },
         {
           session: s ? snap(s) : null,
           enrolled: !!enr,
@@ -326,9 +334,9 @@ export async function buildApp(opts: AppOptions) {
       );
 
       if (s) {
-        await tx.insert(attempts).values({ id: randomUUID(), sessionId, studentId: u.id, deviceId: body.data.deviceId, ok: d.ok, rule: d.rule, code: d.code, reason: d.reason, at: now });
+        await tx.insert(attempts).values({ id: randomUUID(), sessionId, studentId: u.id, deviceId: body.data.deviceId, ok: d.ok, rule: d.rule, code: d.code, reason: d.reason, rssi, at: now });
         if (d.ok) {
-          await tx.insert(checkins).values({ id: randomUUID(), sessionId, studentId: u.id, deviceId: body.data.deviceId, hops: body.data.hops, witnesses: body.data.witnesses, method: "AUTO", at: now });
+          await tx.insert(checkins).values({ id: randomUUID(), sessionId, studentId: u.id, deviceId: body.data.deviceId, hops: body.data.hops, witnesses: body.data.witnesses, method: "AUTO", rssi, review: !!d.review, at: now });
         }
         if (d.alert) await tx.insert(alerts).values({ id: randomUUID(), sessionId, kind: d.alert.kind, details: d.alert.details, at: now });
       }
@@ -420,4 +428,4 @@ export async function buildApp(opts: AppOptions) {
   return app;
 }
 
-const publicSession = (s: Row) => ({ id: s.id, classId: s.classId, state: s.state, openedAt: s.openedAt, closedAt: s.closedAt, windowMs: s.windowMs });
+const publicSession = (s: Row) => ({ id: s.id, classId: s.classId, state: s.state, openedAt: s.openedAt, closedAt: s.closedAt, windowMs: s.windowMs, mode: s.mode });

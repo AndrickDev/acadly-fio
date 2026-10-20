@@ -1,10 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { TOKEN_SLOT_MS } from "@acadly-fio/core";
+import { TOKEN_HEX_LEN, TOKEN_SLOT_MS } from "@acadly-fio/core";
 
 export const slotOf = (t: number): number => Math.floor(t / TOKEN_SLOT_MS);
 
 export const tokenFor = (secret: string, sessionId: string, slot: number): string =>
-  createHmac("sha256", secret).update(`${sessionId}:${slot}`).digest("hex").slice(0, 16);
+  createHmac("sha256", secret).update(`${sessionId}:${slot}`).digest("hex").slice(0, TOKEN_HEX_LEN);
 
 const eq = (a: string, b: string): boolean => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 

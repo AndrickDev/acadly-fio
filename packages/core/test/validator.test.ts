@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateCheckIn, canTransition, isWindowOpen } from "../src";
+import { RSSI_REVISAR_ABAIXO, validateCheckIn, canTransition, isWindowOpen } from "../src";
 import type { CheckInAttempt, ValidationContext, SessionSnapshot } from "../src";
 
 const T0 = 1_000_000;
@@ -96,5 +96,22 @@ describe("validateCheckIn", () => {
   });
   it("a student cannot anchor themselves", () => {
     expect(validateCheckIn(attempt({ hops: 1, witnesses: ["a1"] }), ctx())).toMatchObject({ rule: "R9" });
+  });
+});
+
+describe("sinal (RSSI) e revisão", () => {
+  it("sinal forte é aceito sem revisão", () => {
+    const d = validateCheckIn(attempt({ rssi: RSSI_REVISAR_ABAIXO + 10 }), ctx());
+    expect(d).toMatchObject({ ok: true, rule: "R10", code: "ACCEPT" });
+    expect(d.review).toBeFalsy();
+  });
+  it("sinal fraco é aceito, mas marcado para o professor revisar", () => {
+    expect(validateCheckIn(attempt({ rssi: RSSI_REVISAR_ABAIXO - 1 }), ctx())).toMatchObject({ ok: true, rule: "R10", review: true });
+  });
+  it("sem RSSI (detecção simulada) não marca revisão", () => {
+    expect(validateCheckIn(attempt(), ctx()).review).toBeFalsy();
+  });
+  it("token inválido continua rejeitado mesmo com sinal forte", () => {
+    expect(validateCheckIn(attempt({ token: "x", rssi: -40 }), ctx())).toMatchObject({ ok: false, rule: "R7" });
   });
 });

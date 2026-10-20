@@ -35,6 +35,7 @@ export const sessions = pgTable("sessions", {
   closedAt: ms("closed_at"),
   windowMs: integer("window_ms").notNull(),
   secret: text("secret").notNull(),
+  mode: text("mode").notNull().default("DIRETO"), // DIRETO | REPASSE (repasse ainda não implementado)
   createdAt: ms("created_at").notNull(),
 });
 
@@ -48,6 +49,8 @@ export const checkins = pgTable(
     hops: integer("hops").notNull().default(0),
     witnesses: jsonb("witnesses").$type<string[]>().notNull().default([]),
     method: text("method").notNull(), // AUTO | MANUAL
+  rssi: integer("rssi"), // sinal do professor ouvido pelo aluno (dBm); evidência, não prova
+  review: boolean("review").notNull().default(false), // aceito com sinal fraco; o professor confirma
     at: ms("at").notNull(),
   },
   (t) => [
@@ -68,6 +71,7 @@ export const attempts = pgTable(
     rule: text("rule").notNull(),
     code: text("code").notNull(),
     reason: text("reason").notNull(),
+    rssi: integer("rssi"),
     at: ms("at").notNull(),
   },
   (t) => [index("attempts_device_idx").on(t.sessionId, t.deviceId, t.at)],

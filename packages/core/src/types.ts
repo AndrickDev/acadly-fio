@@ -35,6 +35,8 @@ export interface CheckInAttempt {
   hops: number;
   /** studentIds de vizinhos ouvidos no mesh */
   witnesses: string[];
+  /** força do sinal do professor (dBm) ouvida pelo aluno; ausente na detecção simulada */
+  rssi?: number | null;
   now: number;
 }
 
@@ -54,4 +56,6 @@ export interface Decision {
   code: RejectCode | "ACCEPT";
   reason: string;
   alert?: { kind: AlertKind; details: string };
+  /** aceito, mas o professor deve revisar (sinal fraco) */
+  review?: boolean;
 }

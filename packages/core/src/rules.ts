@@ -5,6 +5,13 @@ export const DEFAULT_WINDOW_MS = 120_000;
 export const TOKEN_SLOT_MS = 5_000;
 export const RATE_WINDOW_MS = 10_000;
 export const RATE_MAX_ATTEMPTS = 5;
+/** Tamanho do token em hex. 12 = 6 bytes, o que cabe no anúncio Bluetooth (docs/bluetooth.md). */
+export const TOKEN_HEX_LEN = 12;
+/**
+ * PROVISÓRIO, NÃO CALIBRADO: abaixo disso (dBm) a presença vai para revisão do professor.
+ * Só vale depois das medições em sala (docs/bluetooth.md); o RSSI varia muito com aparelho, bolso e posição.
+ */
+export const RSSI_REVISAR_ABAIXO = -80;
 
 export type Confidence = "OBSERVADO" | "INFERIDO" | "PROJETO";
 
@@ -43,5 +50,5 @@ export const RULES: readonly RuleInfo[] = [
     description: "Com hops > 0, ao menos uma testemunha já está presente (impede clusters fantasmas).",
     confidence: "PROJETO",
   },
-  { id: "R10", title: "Aceito", description: "Todas as regras passaram; check-in AUTO gravado.", confidence: "PROJETO" },
+  { id: "R10", title: "Aceito", description: "Todas as regras passaram; check-in AUTO gravado. Com sinal fraco, fica marcado para o professor revisar.", confidence: "PROJETO" },
 ] as const;

@@ -1,4 +1,4 @@
-import { MAX_HOPS, RATE_MAX_ATTEMPTS } from "./rules";
+import { MAX_HOPS, RATE_MAX_ATTEMPTS, RSSI_REVISAR_ABAIXO } from "./rules";
 import type { CheckInAttempt, Decision, SessionSnapshot, SessionState, ValidationContext } from "./types";
 
 const TRANSITIONS: Record<SessionState, SessionState[]> = {
@@ -74,5 +74,8 @@ export function validateCheckIn(a: CheckInAttempt, ctx: ValidationContext): Deci
     }
   }
 
+  if (a.rssi != null && a.rssi < RSSI_REVISAR_ABAIXO) {
+    return { ok: true, rule: "R10", code: "ACCEPT", reason: "Presença registrada; o professor vai confirmar (sinal fraco).", review: true };
+  }
   return { ok: true, rule: "R10", code: "ACCEPT", reason: "Presença registrada." };
 }

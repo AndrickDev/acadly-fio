@@ -57,4 +57,13 @@ CREATE TABLE responses (
 CREATE UNIQUE INDEX responses_uq ON responses (activity_id, student_id);
 `,
   },
+  {
+    id: "0002_sinal_e_modo",
+    sql: `
+ALTER TABLE sessions ADD COLUMN mode text NOT NULL DEFAULT 'DIRETO';
+ALTER TABLE checkins ADD COLUMN rssi integer;
+ALTER TABLE checkins ADD COLUMN review boolean NOT NULL DEFAULT false;
+ALTER TABLE attempts ADD COLUMN rssi integer;
+`,
+  },
 ];

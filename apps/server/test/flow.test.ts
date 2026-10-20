@@ -66,7 +66,7 @@ describe("fluxo completo", () => {
 
   it("token de outra sessão é inválido (R7)", async () => {
     const s2 = (await call("POST", `/classes/${classId}/sessions`, prof, {})).body.id;
-    expect(tokenFor("x", s2, slotOf(clock.now))).toHaveLength(16);
+    expect(tokenFor("x", s2, slotOf(clock.now))).toHaveLength(12);
     const b = (await call("POST", "/auth/login", undefined, { name: "Aluno Dois", role: "ALUNO" })).body;
     await call("POST", "/classes/join", b.token, { code: joinCode });
     const r = await call("POST", `/sessions/${sid}/checkin`, b.token, { deviceId: "device-zzzzzzzz-2", token: "deadbeefdeadbeef" });
@@ -107,5 +107,57 @@ describe("fluxo completo", () => {
     const list = (await call("GET", `/sessions/${s3}/activities`, prof)).body;
     expect(list[0].tally).toEqual([0, 1]);
     expect(aluId).toBeTruthy();
+  });
+});
+
+describe("Bluetooth: leituras, sinal fraco e revisão", () => {
+  let prof: string, alu: string, aluId: string, sid: string, outraSid: string;
+  const beacon = async (id: string) => (await call("GET", `/sessions/${id}/beacon`, prof)).body.token as string;
+
+  it("prepara duas chamadas abertas (sala e sala vizinha)", async () => {
+    prof = (await call("POST", "/auth/login", undefined, { name: "Prof BLE", role: "PROFESSOR" })).body.token;
+    const a = (await call("POST", "/auth/login", undefined, { name: "Aluno BLE", role: "ALUNO" })).body;
+    alu = a.token;
+    aluId = a.user.id;
+    const c1 = (await call("POST", "/classes", prof, { name: "Sala A" })).body;
+    const c2 = (await call("POST", "/classes", prof, { name: "Sala B" })).body;
+    await call("POST", "/classes/join", alu, { code: c1.joinCode });
+    const s1 = (await call("POST", `/classes/${c1.id}/sessions`, prof, { windowMs: 120_000 })).body;
+    const s2 = (await call("POST", `/classes/${c2.id}/sessions`, prof, { windowMs: 120_000 })).body;
+    expect(s1.mode).toBe("DIRETO");
+    sid = s1.id;
+    outraSid = s2.id;
+    await call("POST", `/sessions/${sid}/open`, prof);
+    await call("POST", `/sessions/${outraSid}/open`, prof);
+  });
+
+  it("token tem 12 hex (6 bytes), o que cabe no anúncio", async () => {
+    expect(await beacon(sid)).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  it("só ouviu a sala vizinha: rejeita (R7)", async () => {
+    const r = await call("POST", `/sessions/${sid}/checkin`, alu, { deviceId: "device-ble-0001", readings: [{ token: await beacon(outraSid), rssi: -50 }] });
+    expect(r.status).toBe(422);
+    expect(r.body.rule).toBe("R7");
+  });
+
+  it("ouviu a vizinha forte e a própria sala fraca: aceita para revisão", async () => {
+    const r = await call("POST", `/sessions/${sid}/checkin`, alu, {
+      deviceId: "device-ble-0001",
+      readings: [
+        { token: await beacon(outraSid), rssi: -45 },
+        { token: await beacon(sid), rssi: -88 },
+      ],
+    });
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ ok: true, review: true });
+    const row = (await call("GET", `/sessions/${sid}/attendance`, prof)).body.find((x: { studentId: string }) => x.studentId === aluId);
+    expect(row).toMatchObject({ present: true, review: true, rssi: -88 });
+  });
+
+  it("professor confirma a revisão", async () => {
+    await call("POST", `/sessions/${sid}/manual`, prof, { studentId: aluId, present: true });
+    const row = (await call("GET", `/sessions/${sid}/attendance`, prof)).body.find((x: { studentId: string }) => x.studentId === aluId);
+    expect(row).toMatchObject({ present: true, review: false });
   });
 });

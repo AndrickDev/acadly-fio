@@ -13,6 +13,18 @@ Legenda: **[confirmado]** vem da documentação pública; **[a validar]** só se
 
 O servidor já valida o contrato (código que muda a cada 5 s, saltos, testemunhas). Falta o lado do aparelho.
 
+## Estado do protótipo (2026-10-20)
+
+**Configurado sem execução em aparelho real.** Testes automáticos passam; o Bluetooth só se prova com 2 celulares.
+
+- Professor: ao abrir a chamada, o app busca o código no servidor a cada 4 s e anuncia (UUID de serviço + dado de fabricante 0xFFFF com 6 bytes). `Professor.tsx`.
+- Aluno: ao tocar, escuta 6 s e envia **todos** os códigos ouvidos com a mediana do sinal (`readings`). O servidor escolhe o que bate com o segredo da própria sala; código só da sala vizinha é rejeitado (R7). `proximity.ts`, `app.ts`.
+- Sinal abaixo de `RSSI_REVISAR_ABAIXO` (-80 dBm, **provisório, sem calibração**) aceita a presença mas marca **revisar**; o professor toca no aluno (laranja) para confirmar. `packages/core/src/rules.ts`.
+- Token de 12 hex (6 bytes) no servidor e no anúncio (`TOKEN_HEX_LEN`).
+- **Modo da chamada** (Conta do professor): Direto ou Repasse. Repasse (mesh) **ainda não existe** e age como Direto; o aluno não vê o modo.
+- Aviso ao aluno ainda é a lista de chamadas abertas (consulta a cada 3 s com o app aberto). Push (FCM) fica para depois.
+- A suposição de que o dado de fabricante volta como texto hexadecimal na escuta é **a validar** no aparelho.
+
 ## Biblioteca
 
 `munim-bluetooth` (emite e escuta na mesma biblioteca).

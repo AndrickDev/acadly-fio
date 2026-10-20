@@ -9,7 +9,7 @@ Monorepo npm workspaces: `packages/core` (regras R1-R10, TS puro), `apps/server`
 ## Comandos (reais)
 
 - `npm install`
-- `npm test` (vitest: core 17 + server 9)
+- `npm test` (vitest: core 21 + server 14)
 - Typecheck: `npx tsc --noEmit` dentro de `apps/server` e de `apps/mobile`
 - `npm run server` (com `SIM_BEACON=1` só em dev), `npm run mobile`, `npm run simulate`
 - Não há lint nem build configurados. Não inventar scripts.

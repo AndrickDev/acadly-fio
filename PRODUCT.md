@@ -16,15 +16,15 @@ Criar turma, iniciar chamada, aluno marcar presença, servidor aplicar R1 a R10 
 
 ## Escopo
 
-Roadmap por fase em [`ROADMAP.md`](ROADMAP.md): v0.2 Bluetooth real, v0.3 integração Fio (CSV, Moodle), v0.4 Modo Prova, v1.0 produção.
+Roadmap por fase em [`ROADMAP.md`](ROADMAP.md): v0.2 chamada presencial com Bluetooth real, v0.3 aula online; Moodle/Portal, login institucional, lista final e Modo Prova ficam para depois.
 
 ## Fora de escopo (decisão)
 
-GPS, reconhecimento facial, decompilar o Acadly, guardar histórico de proximidade entre pessoas, iOS.
+GPS, reconhecimento facial, decompilar o Acadly, guardar histórico de proximidade entre pessoas, beacon ou equipamento por sala. iOS fica para depois do Android.
 
 ## Requisitos
 
-Android apenas. LGPD: não guardar o grafo de proximidade além do necessário para validar a chamada. Interface em português-BR, contraste e rótulos de acessibilidade nos dois temas.
+Android 13 ou mais novo por enquanto (iPhone depois). LGPD: não guardar o grafo de proximidade além do necessário para validar a chamada. Interface em português-BR, contraste e rótulos de acessibilidade nos dois temas.
 
 ## Restrições técnicas
 

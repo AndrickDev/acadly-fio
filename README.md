@@ -42,8 +42,8 @@ Executadas em ordem; a primeira que falha decide. Cada regra está rotulada em [
 
 | | Estado |
 |---|---|
-| Regras, máquina de estados da chamada, validador | Pronto, com 17 testes |
-| API (Fastify) + PostgreSQL | Pronto, com 9 testes de integração |
+| Regras, máquina de estados da chamada, validador | Pronto, com 21 testes |
+| API (Fastify) + PostgreSQL | Pronto, com 14 testes de integração |
 | App Android: professor, aluno, painel de Evidências, enquete, presença manual | Pronto, com identidade visual da Unifio |
 | Simulação com 175 alunos concorrentes | Pronta: 100% de acerto, 0 fraude aceita |
 | Detecção por **Bluetooth real** | **Não existe ainda** (simulada) |
@@ -78,7 +78,7 @@ Para testar os dois papéis num aparelho só: **Conta → Sair da conta** e entr
 ## Testes
 
 ```bash
-npm test            # 17 testes das regras + 9 de integração (API e banco)
+npm test            # 21 testes das regras + 14 de integração (API e banco)
 npm run simulate    # 175 alunos concorrentes; gera tests/report.md e tests/report.json
 ```
 

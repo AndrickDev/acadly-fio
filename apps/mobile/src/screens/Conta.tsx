@@ -1,9 +1,9 @@
 import { ScrollView, View } from "react-native";
-import type { User } from "../api";
+import type { CallMode, User } from "../api";
 import type { ThemePref } from "../theme";
 import { Avatar, Button, Chip, Hero, Row, Segmented, SectionTitle, T, colors } from "../ui";
 
-export function Conta({ user, baseUrl, themePref, onTheme, onLab, onLogout }: { user: User; baseUrl: string; themePref: ThemePref; onTheme: (t: ThemePref) => void; onLab: () => void; onLogout: () => void }) {
+export function Conta({ user, baseUrl, themePref, onTheme, providerLabel, mode, onMode, onLab, onLogout }: { user: User; baseUrl: string; themePref: ThemePref; onTheme: (t: ThemePref) => void; providerLabel: string; mode: CallMode; onMode: (m: CallMode) => void; onLab: () => void; onLogout: () => void }) {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
       <Hero>
@@ -27,6 +27,23 @@ export function Conta({ user, baseUrl, themePref, onTheme, onLab, onLogout }: { 
           ]}
         />
 
+        {user.role === "PROFESSOR" && (
+          <>
+            <SectionTitle>Modo da chamada</SectionTitle>
+            <Segmented
+              value={mode}
+              onChange={onMode}
+              options={[
+                { key: "DIRETO", label: "Direto" },
+                { key: "REPASSE", label: "Repasse" },
+              ]}
+            />
+            <T v="small" c={colors.mudo}>
+              {mode === "DIRETO" ? "Os alunos ouvem o seu celular. Serve para salas comuns." : "Para salas grandes: os alunos repassam o sinal. Ainda não existe; por ora age como Direto."}
+            </T>
+          </>
+        )}
+
         <View style={{ paddingTop: 12 }}>
           <Row>
             <View style={{ flex: 1, gap: 2 }}>
@@ -41,7 +58,7 @@ export function Conta({ user, baseUrl, themePref, onTheme, onLab, onLogout }: { 
               <T v="small" c={colors.mudo}>
                 Versão
               </T>
-              <Chip text="Protótipo, detecção simulada" tone="warn" />
+              <Chip text={providerLabel === "Bluetooth" ? "Protótipo, Bluetooth" : "Protótipo, detecção simulada"} tone="warn" />
             </View>
           </Row>
         </View>

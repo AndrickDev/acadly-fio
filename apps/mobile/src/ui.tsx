@@ -205,15 +205,15 @@ export function Empty({ title, text }: { title: string; text: string }) {
 }
 
 /** Peça de aluno na grade da sala: paralelogramo, texto reto. Azul com visto laranja = presente. */
-export function StudentTile({ name, present, width, onPress }: { name: string; present: boolean; width: number; onPress: () => void }) {
+export function StudentTile({ name, present, review = false, width, onPress }: { name: string; present: boolean; review?: boolean; width: number; onPress: () => void }) {
   const parts = name.trim().split(/\s+/);
   const short = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${name}, ${present ? "presente" : "ausente"}. Toque para ${present ? "desfazer" : "marcar presença"}`} onPress={onPress} style={{ width, height: 80 }}>
-      <View style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: present ? colors.azul : colors.linha, backgroundColor: present ? colors.azul : "transparent", transform: [{ skewX: "-6deg" }] }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={review ? `${name}, presente com sinal fraco. Toque para confirmar` : `${name}, ${present ? "presente" : "ausente"}. Toque para ${present ? "desfazer" : "marcar presença"}`} onPress={onPress} style={{ width, height: 80 }}>
+      <View style={{ flex: 1, borderRadius: 12, borderWidth: 1.5, borderColor: review ? colors.acao : present ? colors.azul : colors.linha, backgroundColor: review ? "transparent" : present ? colors.azul : "transparent", transform: [{ skewX: "-6deg" }] }}>
         <View style={{ flex: 1, transform: [{ skewX: "6deg" }], alignItems: "center", justifyContent: "center", gap: 3, paddingHorizontal: 4 }}>
-          <Ionicons name={present ? "checkmark-circle" : "ellipse-outline"} size={20} color={present ? colors.acao : colors.mudo} />
-          <T v="small" c={present ? colors.branco : colors.mudo} numberOfLines={1} style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 17 }}>
+          <Ionicons name={review ? "alert-circle" : present ? "checkmark-circle" : "ellipse-outline"} size={20} color={review || present ? colors.acao : colors.mudo} />
+          <T v="small" c={review ? colors.laranjaTexto : present ? colors.branco : colors.mudo} numberOfLines={1} style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 17 }}>
             {short}
           </T>
         </View>

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, ScrollView, View, useWindowDimensions } from "react-native";
-import type { Activity, AlertRow, Api, AttemptRow, AttendanceRow, ClassItem, SessionInfo } from "../api";
+import type { Activity, AlertRow, Api, AttemptRow, AttendanceRow, CallMode, ClassItem, SessionInfo } from "../api";
+import { FIO_COMPANY_ID, FIO_SERVICE_UUID, loadBle } from "../ble";
 import { ALERT_LABEL } from "../labels";
 import { Poster } from "../poster";
 import { Button, Chip, Empty, Field, Hero, IconButton, Panel, SectionTitle, Segmented, SlantBar, StudentTile, T, colors, firstName, mmss, presentLine, useInterval } from "../ui";
 import { EvidenceBoard } from "./Evidencias";
 
-export function Professor({ api, userName }: { api: Api; userName: string }) {
+export function Professor({ api, userName, mode }: { api: Api; userName: string; mode: CallMode }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [cls, setCls] = useState<ClassItem | null>(null);
   const [newName, setNewName] = useState("");
@@ -17,6 +18,7 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tab, setTab] = useState<"chamada" | "evidencias">("chamada");
   const [busy, setBusy] = useState(false);
+  const [signal, setSignal] = useState<"emitindo" | "sem-bluetooth" | "erro" | null>(null);
   const [offset, setOffset] = useState(0); // serverNow - Date.now()
   const [, tick] = useState(0);
   const [windowMin, setWindowMin] = useState<"2" | "5" | "10">("2");
@@ -54,10 +56,56 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
     }
   }, [api, session?.id]);
   useInterval(refresh, session ? 2000 : null);
+
+  // Enquanto a chamada está aberta, este celular emite o código que muda a cada 5 s (docs/bluetooth.md).
+  useEffect(() => {
+    if (session?.state !== "ABERTA") {
+      setSignal(null);
+      return;
+    }
+    const ble = loadBle();
+    if (!ble) {
+      setSignal("sem-bluetooth");
+      return;
+    }
+    let alive = true;
+    const emit = async () => {
+      try {
+        const { token } = await api.beacon(session.id);
+        if (!alive) return;
+        try {
+          ble.stopAdvertising();
+        } catch {
+          /* ainda não estava emitindo */
+        }
+        ble.startAdvertising({ serviceUUIDs: [FIO_SERVICE_UUID], manufacturerDataEntries: [{ companyId: FIO_COMPANY_ID, data: token }] });
+        setSignal("emitindo");
+      } catch {
+        if (alive) setSignal("erro");
+      }
+    };
+    (async () => {
+      const ok = (await ble.requestBluetoothPermission(["advertise", "connect"])) && ((await ble.isBluetoothEnabled()) || (await ble.requestEnable().catch(() => false)));
+      if (!alive) return;
+      if (!ok) return setSignal("erro");
+      await emit();
+    })();
+    const timer = setInterval(emit, 4000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      try {
+        ble.stopAdvertising();
+      } catch {
+        /* já parado */
+      }
+    };
+  }, [api, session?.id, session?.state]);
   useInterval(() => tick((n) => n + 1), session?.state === "ABERTA" ? 500 : null);
 
   const names = useMemo(() => Object.fromEntries(roster.map((r) => [r.studentId, r.name])), [roster]);
   const present = roster.filter((r) => r.present).length;
+  const toReview = roster.filter((r) => r.present && r.review).length;
   const isOpen = session?.state === "ABERTA";
   const remaining = isOpen && session.openedAt ? Math.max(0, session.openedAt + session.windowMs - (Date.now() + offset)) : 0;
 
@@ -65,7 +113,7 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
     if (!cls) return;
     setBusy(true);
     try {
-      const created = await api.createSession(cls.id, Number(windowMin) * 60_000);
+      const created = await api.createSession(cls.id, Number(windowMin) * 60_000, mode);
       setSession(await api.openSession(created.id));
     } catch (e) {
       fail(e);
@@ -146,6 +194,7 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
               {mmss(remaining)}
             </T>
             <SlantBar ratio={remaining / (session?.windowMs ?? 1)} onDark />
+            {signal && <T v="small" c={signal === "emitindo" ? colors.sobreAzul : colors.laranjaTexto}>{signal === "emitindo" ? "Seu celular está emitindo o sinal da chamada." : signal === "sem-bluetooth" ? "Sem Bluetooth neste app (modo de teste)." : "Não consegui emitir o sinal. Ligue o Bluetooth e permita dispositivos por perto."}</T>}
             <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
               <T v="title" c={colors.acao} slant style={{ fontFamily: "Outfit_800ExtraBold", fontSize: 40, lineHeight: 44 }}>
                 {present}/{roster.length}
@@ -229,11 +278,11 @@ export function Professor({ api, userName }: { api: Api; userName: string }) {
                 ) : (
                   <>
                     <T v="small" c={colors.mudo}>
-                      Toque num aluno para marcar ou desfazer a presença.
+                      {toReview > 0 ? `${toReview} com sinal fraco (laranja): toque para confirmar.` : "Toque num aluno para marcar ou desfazer a presença."}
                     </T>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                       {roster.map((r) => (
-                        <StudentTile key={r.studentId} name={r.name} present={r.present} width={tileW} onPress={() => api.manual(session.id, r.studentId, !r.present).then(refresh).catch(fail)} />
+                        <StudentTile key={r.studentId} name={r.name} present={r.present} review={!!r.review} width={tileW} onPress={() => api.manual(session.id, r.studentId, r.review ? true : !r.present).then(refresh).catch(fail)} />
                       ))}
                     </View>
                   </>

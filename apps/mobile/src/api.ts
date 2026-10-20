@@ -9,6 +9,8 @@ export interface ClassItem {
   name: string;
   joinCode: string;
 }
+/** Como a chamada descobre os alunos. REPASSE (mesh) ainda não existe: por ora age como DIRETO. */
+export type CallMode = "DIRETO" | "REPASSE";
 export interface SessionInfo {
   id: string;
   classId: string;
@@ -16,6 +18,7 @@ export interface SessionInfo {
   openedAt: number | null;
   closedAt: number | null;
   windowMs: number;
+  mode?: CallMode;
   presentes?: number;
   serverNow?: number;
 }
@@ -32,6 +35,9 @@ export interface AttendanceRow {
   present: boolean;
   method: "AUTO" | "MANUAL" | null;
   hops: number | null;
+  rssi: number | null;
+  /** aceito com sinal fraco: o professor confirma */
+  review: boolean | null;
   at: number | null;
 }
 export interface AttemptRow {
@@ -54,6 +60,7 @@ export interface Decision {
   rule: string;
   code: string;
   reason: string;
+  review?: boolean;
 }
 export interface RuleInfo {
   id: string;
@@ -105,7 +112,7 @@ export function makeApi(baseUrl: string, token: string | null, onUnauthorized?: 
     createClass: (name: string) => req<ClassItem>("POST", "/classes", { name }),
     joinClass: (code: string) => req<ClassItem>("POST", "/classes/join", { code }),
     openSessions: () => req<OpenSession[]>("GET", "/me/open-sessions"),
-    createSession: (classId: string, windowMs = 120_000) => req<SessionInfo>("POST", `/classes/${classId}/sessions`, { windowMs }),
+    createSession: (classId: string, windowMs = 120_000, mode: CallMode = "DIRETO") => req<SessionInfo>("POST", `/classes/${classId}/sessions`, { windowMs, mode }),
     latestSession: (classId: string) => req<SessionInfo | null>("GET", `/classes/${classId}/sessions/latest`),
     openSession: (id: string) => req<SessionInfo>("POST", `/sessions/${id}/open`, {}),
     closeSession: (id: string) => req<SessionInfo>("POST", `/sessions/${id}/close`, {}),
@@ -116,7 +123,7 @@ export function makeApi(baseUrl: string, token: string | null, onUnauthorized?: 
     simBeacon: (id: string) => req<{ token: string }>("GET", `/sessions/${id}/sim-beacon`),
     manual: (id: string, studentId: string, present: boolean) => req("POST", `/sessions/${id}/manual`, { studentId, present }),
     // 422 = regra rejeitou; o corpo traz a decisão e deve ser mostrado, não tratado como erro de rede
-    checkin: (id: string, body: { deviceId: string; token: string; hops: number; witnesses: string[] }) =>
+    checkin: (id: string, body: { deviceId: string; token?: string; readings?: { token: string; rssi: number }[]; hops: number; witnesses: string[] }) =>
       req<Decision>("POST", `/sessions/${id}/checkin`, body, [422]),
     activities: (sessionId: string) => req<Activity[]>("GET", `/sessions/${sessionId}/activities`),
     createPoll: (sessionId: string, prompt: string, options: string[]) => req("POST", `/sessions/${sessionId}/activities`, { prompt, options }),

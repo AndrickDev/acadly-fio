@@ -3,8 +3,9 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, View, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { makeApi, type Role, type User } from "./src/api";
-import { simulatedProvider } from "./src/proximity";
+import { makeApi, type CallMode, type Role, type User } from "./src/api";
+import { bleProvider, simulatedProvider } from "./src/proximity";
+import { loadBle } from "./src/ble";
 import { Aluno } from "./src/screens/Aluno";
 import { Conta } from "./src/screens/Conta";
 import { Laboratorio } from "./src/screens/Laboratorio";
@@ -25,10 +26,16 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"inicio" | "conta">("inicio");
   const [lab, setLab] = useState(false);
+  const [callMode, setCallMode] = useState<CallMode>("DIRETO");
   const [themePref, setThemePref] = useState<ThemePref>("escuro");
   const system = useColorScheme();
   const theme: ThemeName = themePref === "sistema" ? (system === "light" ? "claro" : "escuro") : themePref;
   applyTheme(theme); // idempotente; a árvore remonta (key) quando o tema muda
+
+  const chooseMode = (m: CallMode) => {
+    setCallMode(m);
+    save("callMode", m);
+  };
 
   const chooseTheme = (t: ThemePref) => {
     setThemePref(t);
@@ -37,7 +44,8 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [u, t, url, th] = await Promise.all([load("user"), load("token"), load("baseUrl"), load("theme")]);
+      const [u, t, url, th, cm] = await Promise.all([load("user"), load("token"), load("baseUrl"), load("theme"), load("callMode")]);
+      if (cm === "DIRETO" || cm === "REPASSE") setCallMode(cm);
       if (th === "claro" || th === "escuro" || th === "sistema") setThemePref(th);
       if (url) setBaseUrl(url);
       if (u && t) {
@@ -74,7 +82,7 @@ export default function App() {
   };
 
   const api = useMemo(() => makeApi(baseUrl, token, logout), [baseUrl, token]);
-  const provider = useMemo(() => simulatedProvider(api), [api]);
+  const provider = useMemo(() => (loadBle() ? bleProvider() : simulatedProvider(api)), [api]);
 
   if (!fontsLoaded || !ready) return <View style={{ flex: 1, backgroundColor: colors.hero }} />;
 
@@ -90,10 +98,10 @@ export default function App() {
           <>
             {/* as duas abas ficam montadas para não perder turma e chamada ao trocar de aba */}
             <View style={{ flex: 1, display: tab === "inicio" ? "flex" : "none" }}>
-              {user.role === "PROFESSOR" ? <Professor api={api} userName={user.name} /> : <Aluno api={api} provider={provider} userName={user.name} />}
+              {user.role === "PROFESSOR" ? <Professor api={api} userName={user.name} mode={callMode} /> : <Aluno api={api} provider={provider} userName={user.name} />}
             </View>
             <View style={{ flex: 1, display: tab === "conta" ? "flex" : "none" }}>
-              <Conta user={user} baseUrl={baseUrl} themePref={themePref} onTheme={chooseTheme} onLab={() => setLab(true)} onLogout={logout} />
+              <Conta user={user} baseUrl={baseUrl} themePref={themePref} onTheme={chooseTheme} providerLabel={provider.label} mode={callMode} onMode={chooseMode} onLab={() => setLab(true)} onLogout={logout} />
             </View>
             <TabBar
               active={tab}

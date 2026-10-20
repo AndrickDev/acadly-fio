@@ -107,7 +107,7 @@ export function Aluno({ api, provider, userName }: { api: Api; provider: Proximi
           <View style={{ alignItems: "center", paddingBottom: 12 }}>
             <T v="heading">Presença registrada</T>
             <T v="small" c={colors.mudo}>
-              Regra {mine!.rule}: {ruleTitle(mine!.rule).toLowerCase() || "aceito"}.
+              {mine!.review ? "O professor vai confirmar (sinal fraco). Da próxima vez, chegue mais perto." : `Regra ${mine!.rule}: ${ruleTitle(mine!.rule).toLowerCase() || "aceito"}.`}
             </T>
           </View>
         )}

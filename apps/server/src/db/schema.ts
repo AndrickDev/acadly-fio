@@ -105,3 +105,24 @@ export const responses = pgTable(
   },
   (t) => [uniqueIndex("responses_uq").on(t.activityId, t.studentId)],
 );
+
+/** Modo Prova: o fiscal registra no celular, mesmo sem internet, e sincroniza depois. O id do evento é gerado no aparelho (reenvio não duplica). */
+export const exams = pgTable("exams", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").notNull().references(() => classes.id),
+  name: text("name").notNull(),
+  createdAt: ms("created_at").notNull(),
+});
+
+export const examEvents = pgTable(
+  "exam_events",
+  {
+    id: text("id").primaryKey(),
+    examId: text("exam_id").notNull().references(() => exams.id),
+    studentId: text("student_id").notNull().references(() => users.id),
+    kind: text("kind").notNull(), // ENTROU | ENTREGOU | ZERAR (volta a ausente)
+    at: ms("at").notNull(), // hora marcada no aparelho do fiscal
+    receivedAt: ms("received_at").notNull(),
+  },
+  (t) => [index("exam_events_exam_idx").on(t.examId, t.at)],
+);

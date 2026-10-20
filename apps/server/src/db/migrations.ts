@@ -66,4 +66,17 @@ ALTER TABLE checkins ADD COLUMN review boolean NOT NULL DEFAULT false;
 ALTER TABLE attempts ADD COLUMN rssi integer;
 `,
   },
+  {
+    id: "0003_prova",
+    sql: `
+CREATE TABLE exams (
+  id text PRIMARY KEY, class_id text NOT NULL REFERENCES classes(id), name text NOT NULL, created_at bigint NOT NULL
+);
+CREATE TABLE exam_events (
+  id text PRIMARY KEY, exam_id text NOT NULL REFERENCES exams(id), student_id text NOT NULL REFERENCES users(id),
+  kind text NOT NULL, at bigint NOT NULL, received_at bigint NOT NULL
+);
+CREATE INDEX exam_events_exam_idx ON exam_events (exam_id, at);
+`,
+  },
 ];

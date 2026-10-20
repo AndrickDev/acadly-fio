@@ -11,7 +11,7 @@ Node v26.7.0, npm workspaces, Expo SDK 58, Fastify 5, Drizzle 0.36, vitest 2.
 | Comando | Resultado |
 |---|---|
 | `npm install` | validated (dependências já instaladas) |
-| `npm test` | validated: core 21 + server 14 passando |
+| `npm test` | validated: core 21 + server 19 passando |
 | `npx tsc --noEmit` em `apps/server` | validated: exit 0 |
 | `npx tsc --noEmit` em `apps/mobile` | validated: exit 0 |
 | `packages/core` typecheck | pending: não há `tsconfig.json` no pacote |
@@ -82,3 +82,12 @@ O **Laboratório Bluetooth** (Conta ou tela de login) mostra o RSSI ao vivo e aj
 | "Token inválido" | Relógios do computador e do servidor fora de hora, ou celular ouviu só outra sala |
 
 Se usar o Claude Code no computador: abra a pasta e peça para ler `.claude/handoff.md`.
+
+### Testar o Modo Prova (sem Bluetooth)
+
+1. Entre como **Professor**, abra a turma (com alguns alunos já entrados pelo código) e toque na aba **Prova**.
+2. Crie a prova ("P1 de Cálculo"). A lista da turma é baixada para o celular.
+3. Ligue **Simular sala sem internet**, toque em alguns alunos (1º toque entrou, 2º entregou, segurar desfaz). O contador "por enviar" sobe.
+4. Desligue a simulação: os toques sobem sozinhos (ou use **Enviar agora**). O contador volta a "Tudo enviado".
+5. Toque em **Ver a ata** e depois em compartilhar.
+6. Prova real do offline: ative o modo avião no celular e feche e abra o app; os toques continuam lá.

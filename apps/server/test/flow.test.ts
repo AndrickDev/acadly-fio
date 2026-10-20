@@ -161,3 +161,51 @@ describe("Bluetooth: leituras, sinal fraco e revisão", () => {
     expect(row).toMatchObject({ present: true, review: false });
   });
 });
+
+describe("Modo Prova: lista do fiscal que sincroniza depois", () => {
+  let prof: string, outro: string, classId: string, examId: string, ana: string, bia: string;
+  const ev = (id: string, studentId: string, kind: string, at: number) => ({ id, studentId, kind, at });
+
+  it("cria a prova a partir da turma e baixa a lista", async () => {
+    prof = (await call("POST", "/auth/login", undefined, { name: "Fiscal", role: "PROFESSOR" })).body.token;
+    outro = (await call("POST", "/auth/login", undefined, { name: "Outro Prof", role: "PROFESSOR" })).body.token;
+    const a = (await call("POST", "/auth/login", undefined, { name: "Ana Prova", role: "ALUNO" })).body;
+    const b = (await call("POST", "/auth/login", undefined, { name: "Bia Prova", role: "ALUNO" })).body;
+    ana = a.user.id;
+    bia = b.user.id;
+    const c = (await call("POST", "/classes", prof, { name: "Física" })).body;
+    classId = c.id;
+    await call("POST", "/classes/join", a.token, { code: c.joinCode });
+    await call("POST", "/classes/join", b.token, { code: c.joinCode });
+    const e = await call("POST", `/classes/${classId}/exams`, prof, { name: "P1 de Física" });
+    expect(e.status).toBe(200);
+    examId = e.body.id;
+    const d = (await call("GET", `/exams/${examId}`, prof)).body;
+    expect(d.roster.map((r: { name: string }) => r.name)).toEqual(["Ana Prova", "Bia Prova"]);
+    expect(d.events).toEqual([]);
+  });
+
+  it("outro professor não acessa a prova", async () => {
+    expect((await call("GET", `/exams/${examId}`, outro)).status).toBe(404);
+    expect((await call("POST", `/exams/${examId}/events`, outro, { events: [ev("evento-x1", ana, "ENTROU", 1)] })).status).toBe(404);
+  });
+
+  it("recebe eventos em lote e reenviar não duplica", async () => {
+    const lote = [ev("evento-01", ana, "ENTROU", 1000), ev("evento-02", bia, "ENTROU", 1100), ev("evento-03", ana, "ENTREGOU", 5000)];
+    expect((await call("POST", `/exams/${examId}/events`, prof, { events: lote })).body.saved).toBe(3);
+    expect((await call("POST", `/exams/${examId}/events`, prof, { events: lote })).body.saved).toBe(0);
+    const d = (await call("GET", `/exams/${examId}`, prof)).body;
+    expect(d.events).toHaveLength(3);
+  });
+
+  it("rejeita aluno que não é da turma e tipo inválido", async () => {
+    expect((await call("POST", `/exams/${examId}/events`, prof, { events: [ev("evento-09", "ninguem", "ENTROU", 1)] })).status).toBe(422);
+    expect((await call("POST", `/exams/${examId}/events`, prof, { events: [ev("evento-08", ana, "VOOU", 1)] })).status).toBe(400);
+  });
+
+  it("lista as provas da turma com contagem", async () => {
+    const l = (await call("GET", `/classes/${classId}/exams`, prof)).body;
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ id: examId, name: "P1 de Física", alunos: 2 });
+  });
+});

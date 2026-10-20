@@ -6,6 +6,7 @@ import { ALERT_LABEL } from "../labels";
 import { Poster } from "../poster";
 import { Button, Chip, Empty, Field, Hero, IconButton, Panel, SectionTitle, Segmented, SlantBar, StudentTile, T, colors, firstName, mmss, presentLine, useInterval } from "../ui";
 import { EvidenceBoard } from "./Evidencias";
+import { Prova } from "./Prova";
 
 export function Professor({ api, userName, mode }: { api: Api; userName: string; mode: CallMode }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -16,7 +17,7 @@ export function Professor({ api, userName, mode }: { api: Api; userName: string;
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [tab, setTab] = useState<"chamada" | "evidencias">("chamada");
+  const [tab, setTab] = useState<"chamada" | "prova" | "evidencias">("chamada");
   const [busy, setBusy] = useState(false);
   const [signal, setSignal] = useState<"emitindo" | "sem-bluetooth" | "erro" | null>(null);
   const [offset, setOffset] = useState(0); // serverNow - Date.now()
@@ -225,11 +226,14 @@ export function Professor({ api, userName, mode }: { api: Api; userName: string;
           onChange={setTab}
           options={[
             { key: "chamada", label: "Chamada" },
+            { key: "prova", label: "Prova" },
             { key: "evidencias", label: "Evidências" },
           ]}
         />
 
-        {tab === "evidencias" ? (
+        {tab === "prova" ? (
+          <Prova api={api} cls={cls} />
+        ) : tab === "evidencias" ? (
           <EvidenceBoard api={api} attempts={attempts} names={names} />
         ) : (
           <>

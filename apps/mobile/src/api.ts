@@ -76,6 +76,25 @@ export interface Activity {
   tally: number[];
 }
 
+export type ExamKind = "ENTROU" | "ENTREGOU" | "ZERAR";
+export interface ExamEvent {
+  id: string;
+  studentId: string;
+  kind: ExamKind;
+  at: number;
+}
+export interface ExamItem {
+  id: string;
+  name: string;
+  createdAt: number;
+  alunos?: number;
+}
+export interface ExamDownload {
+  exam: { id: string; classId: string; name: string; createdAt: number };
+  roster: { studentId: string; name: string }[];
+  events: ExamEvent[];
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -125,6 +144,10 @@ export function makeApi(baseUrl: string, token: string | null, onUnauthorized?: 
     // 422 = regra rejeitou; o corpo traz a decisão e deve ser mostrado, não tratado como erro de rede
     checkin: (id: string, body: { deviceId: string; token?: string; readings?: { token: string; rssi: number }[]; hops: number; witnesses: string[] }) =>
       req<Decision>("POST", `/sessions/${id}/checkin`, body, [422]),
+    exams: (classId: string) => req<ExamItem[]>("GET", `/classes/${classId}/exams`),
+    createExam: (classId: string, name: string) => req<ExamItem>("POST", `/classes/${classId}/exams`, { name }),
+    exam: (id: string) => req<ExamDownload>("GET", `/exams/${id}`),
+    sendExamEvents: (id: string, events: ExamEvent[]) => req<{ saved: number }>("POST", `/exams/${id}/events`, { events }),
     activities: (sessionId: string) => req<Activity[]>("GET", `/sessions/${sessionId}/activities`),
     createPoll: (sessionId: string, prompt: string, options: string[]) => req("POST", `/sessions/${sessionId}/activities`, { prompt, options }),
     respond: (activityId: string, choice: number) => req("POST", `/activities/${activityId}/respond`, { choice }),

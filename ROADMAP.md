@@ -46,6 +46,23 @@ Se o Bluetooth não separar sala de corredor, reavaliar com os dados: confirmaç
 - [ ] Várias chamadas surpresa por aula; presença = participou das chamadas mínimas
 - [ ] Limite honesto documentado: nada impede o aluno de entregar o próprio celular desbloqueado a um amigo
 
+## Modo Prova (protótipo feito em 2026-10-20)
+
+Na prova a internet fica bloqueada, então o celular do **fiscal** guarda tudo e sincroniza depois. Aba **Prova** dentro da turma do professor.
+
+- [x] Criar prova com a lista da turma; baixar a lista antes
+- [x] Registro por toque (entrou, entregou, desfazer), gravado no aparelho a cada toque
+- [x] Fila de envio: eventos com id próprio, reenvio não duplica; chave "Simular sala sem internet" para demonstrar
+- [x] Ata na tela e compartilhamento em texto
+- [ ] Ata em PDF, QR assinado na carteirinha (leitura offline), assinatura na tela
+- [ ] Banco local para provas grandes (hoje usa o armazenamento seguro do Android)
+
+Decisões que dependem da Fio: a ata digital (com assinatura na tela) é aceita pela secretaria? O 4G do fiscal também é bloqueado? O aluno entra com o celular? Existe foto do aluno no cadastro e a LGPD permite mostrá-la ao fiscal? A Fio emite carteirinha com QR?
+
+## Login de demonstração
+
+A tela de login pede RA/e-mail e senha, mas **aceita qualquer senha** (só para mostrar o fluxo). Login real (Moodle/Google institucional) fica para depois.
+
 ## Depois (não agora)
 
 - Exportar a chamada (CSV) e o que fazer com a lista de presença
@@ -56,7 +73,7 @@ Se o Bluetooth não separar sala de corredor, reavaliar com os dados: confirmaç
 - Frequência do aluno e alertas de limite de faltas
 - Monitor ou co-professor
 - Chamada agendada pelo horário e pela sala (ensalamento)
-- Modo Prova (lista do fiscal, ATA em PDF)
+- Modo Prova: PDF, QR da carteirinha, assinatura na tela
 - Servidor hospedado com HTTPS e backup; política de privacidade e consentimento (LGPD); APK assinado
 - Escala: trocar o polling de 3 s por push; barramento de eventos compartilhado se houver mais de um servidor
 

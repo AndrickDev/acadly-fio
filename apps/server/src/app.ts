@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import { RATE_WINDOW_MS, RULES, canTransition, validateCheckIn } from "@acadly-fio/core";
 import type { Decision, SessionSnapshot } from "@acadly-fio/core";
-import { and, asc, count, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { EventEmitter } from "node:events";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -11,7 +11,7 @@ import type { Db } from "./db";
 import { schema } from "./db";
 import { slotOf, tokenFor, verifyBeacon } from "./token";
 
-const { users, classes, enrollments, sessions, checkins, attempts, alerts, activities, responses } = schema;
+const { users, classes, enrollments, sessions, checkins, attempts, alerts, activities, responses, exams, examEvents } = schema;
 
 export interface AppOptions {
   db: Db;
@@ -423,6 +423,66 @@ export async function buildApp(opts: AppOptions) {
     await db.update(activities).set({ state: "ENCERRADA" }).where(eq(activities.id, a.id));
     emit(a.sessionId, "activity", { id: a.id, state: "ENCERRADA" });
     return { ok: true };
+  });
+
+  // ---------- Modo Prova (fiscal offline, sincroniza depois) ----------
+  const ownClass = async (id: string, profId: string) => (await db.select().from(classes).where(and(eq(classes.id, id), eq(classes.professorId, profId))))[0];
+  const ownExam = async (id: string, profId: string) => {
+    const [e] = await db.select().from(exams).where(eq(exams.id, id));
+    return e && (await ownClass(e.classId, profId)) ? e : null;
+  };
+
+  app.post("/classes/:id/exams", async (req, reply) => {
+    const u = await authed(req, reply, "PROFESSOR");
+    if (!u) return;
+    const c = await ownClass((req.params as { id: string }).id, u.id);
+    if (!c) return reply.code(404).send({ error: "class_not_found" });
+    const body = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid_body" });
+    const [e] = await db.insert(exams).values({ id: randomUUID(), classId: c.id, name: body.data.name, createdAt: clock() }).returning();
+    return e;
+  });
+
+  app.get("/classes/:id/exams", async (req, reply) => {
+    const u = await authed(req, reply, "PROFESSOR");
+    if (!u) return;
+    const c = await ownClass((req.params as { id: string }).id, u.id);
+    if (!c) return reply.code(404).send({ error: "class_not_found" });
+    const [list, [{ n }]] = await Promise.all([
+      db.select().from(exams).where(eq(exams.classId, c.id)).orderBy(desc(exams.createdAt)),
+      db.select({ n: count() }).from(enrollments).where(eq(enrollments.classId, c.id)),
+    ]);
+    return list.map((e) => ({ ...e, alunos: Number(n) }));
+  });
+
+  /** Baixa a lista de alunos e os eventos já gravados; o app guarda no aparelho para usar sem internet. */
+  app.get("/exams/:id", async (req, reply) => {
+    const u = await authed(req, reply, "PROFESSOR");
+    if (!u) return;
+    const e = await ownExam((req.params as { id: string }).id, u.id);
+    if (!e) return reply.code(404).send({ error: "exam_not_found" });
+    const [roster, events] = await Promise.all([
+      db.select({ studentId: users.id, name: users.name }).from(enrollments).innerJoin(users, eq(users.id, enrollments.studentId)).where(eq(enrollments.classId, e.classId)).orderBy(asc(users.name)),
+      db.select({ id: examEvents.id, studentId: examEvents.studentId, kind: examEvents.kind, at: examEvents.at }).from(examEvents).where(eq(examEvents.examId, e.id)).orderBy(asc(examEvents.at)),
+    ]);
+    return { exam: { id: e.id, classId: e.classId, name: e.name, createdAt: e.createdAt }, roster, events };
+  });
+
+  /** Lote de eventos do fiscal. Idempotente: o mesmo id enviado de novo é ignorado. */
+  app.post("/exams/:id/events", async (req, reply) => {
+    const u = await authed(req, reply, "PROFESSOR");
+    if (!u) return;
+    const e = await ownExam((req.params as { id: string }).id, u.id);
+    if (!e) return reply.code(404).send({ error: "exam_not_found" });
+    const body = z
+      .object({ events: z.array(z.object({ id: z.string().min(8).max(64), studentId: z.string().max(64), kind: z.enum(["ENTROU", "ENTREGOU", "ZERAR"]), at: z.number().int().positive() })).min(1).max(500) })
+      .safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid_body" });
+    const ids = [...new Set(body.data.events.map((x) => x.studentId))];
+    const ok = await db.select({ id: enrollments.studentId }).from(enrollments).where(and(eq(enrollments.classId, e.classId), inArray(enrollments.studentId, ids)));
+    if (ok.length !== ids.length) return reply.code(422).send({ error: "student_not_in_class" });
+    const saved = await db.insert(examEvents).values(body.data.events.map((x) => ({ ...x, examId: e.id, receivedAt: clock() }))).onConflictDoNothing().returning({ id: examEvents.id });
+    return { saved: saved.length };
   });
 
   return app;
